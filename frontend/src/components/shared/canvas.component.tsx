@@ -121,6 +121,8 @@ export function CanvasComponent({
             width={CANVAS_SIZE}
             height={CANVAS_SIZE}
             fill="white"
+            stroke="black"
+            strokeWidth={0.1}
           />
         </Layer>
 
