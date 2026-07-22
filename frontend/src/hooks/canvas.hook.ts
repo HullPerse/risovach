@@ -11,6 +11,7 @@ import {
   CANVAS_SIZE,
   clampOffset,
   clipPointsToCanvas,
+  hexToRGB,
   isPointInCanvas,
 } from "@/lib/canvas.utils";
 
@@ -112,7 +113,7 @@ export function useCanvasInteraction({
     size: number;
     opacity: number;
   } | null>(null);
-  const altLockedAxisRef = useRef<'x' | 'y' | null>(null);
+  const altLockedAxisRef = useRef<"x" | "y" | null>(null);
   const lastCanvasPosRef = useRef<Point | null>(null);
   const wasOutsideCanvasRef = useRef(false);
 
@@ -180,7 +181,10 @@ export function useCanvasInteraction({
   });
 
   const resetView = useCallback(() => {
-    const clampedZoom = Math.max(zoomConfig.zoomMin, Math.min(zoomConfig.zoomMax, zoomConfig.initialZoom));
+    const clampedZoom = Math.max(
+      zoomConfig.zoomMin,
+      Math.min(zoomConfig.zoomMax, zoomConfig.initialZoom),
+    );
     useCanvasStore.getState().resetView(clampedZoom);
   }, [zoomConfig.initialZoom, zoomConfig.zoomMin, zoomConfig.zoomMax]);
 
@@ -328,22 +332,28 @@ export function useCanvasInteraction({
 
       const lockThreshold = 5;
       let lockedAxis = altLockedAxisRef.current;
-      if (!lockedAxis && (Math.abs(deltaX) >= lockThreshold || Math.abs(deltaY) >= lockThreshold)) {
-        lockedAxis = Math.abs(deltaX) >= Math.abs(deltaY) ? 'x' : 'y';
+      if (
+        !lockedAxis &&
+        (Math.abs(deltaX) >= lockThreshold || Math.abs(deltaY) >= lockThreshold)
+      ) {
+        lockedAxis = Math.abs(deltaX) >= Math.abs(deltaY) ? "x" : "y";
         altLockedAxisRef.current = lockedAxis;
       }
 
       if (!lockedAxis) return;
 
-      if (lockedAxis !== 'y') {
+      if (lockedAxis !== "y") {
         const newSize = Math.max(
           brushSizeRange.min,
           Math.min(brushSizeRange.max, Math.round(start.size + deltaX)),
         );
         if (newSize !== brushSize) onBrushSizeChange?.(newSize);
       }
-      if (lockedAxis !== 'x') {
-        const newOpacity = Math.max(0, Math.min(1, start.opacity - deltaY / 200));
+      if (lockedAxis !== "x") {
+        const newOpacity = Math.max(
+          0,
+          Math.min(1, start.opacity - deltaY / 200),
+        );
         if (newOpacity !== opacity) onOpacityChange?.(newOpacity);
       }
       return;
@@ -438,9 +448,12 @@ export function useCanvasInteraction({
   }
 
   const isAdjusting = isAltPressed && !!altStartRef.current;
-  const circleFill = isAdjusting
-    ? `rgba(255, 0, 0, ${opacity})`
-    : "transparent";
+
+  const circleFill = isAdjusting ? hexToRGB(color, opacity) : "transparent";
+
+  // const circleFill = isAdjusting
+  //   ? `rgba(255, 0, 0, ${opacity})`
+  //   : "transparent";
 
   return {
     handleWheel,

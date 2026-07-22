@@ -170,8 +170,10 @@ export function CanvasComponent({
             <Circle
               x={mousePos.x}
               y={mousePos.y}
+              stroke={cursorStroke}
+              strokeWidth={1}
               radius={brushSize / 2}
-              fill={isAltPressed ? circleFill : cursorStroke}
+              fill={isAltPressed ? circleFill : "transparent"}
               listening={false}
             />
           )}
