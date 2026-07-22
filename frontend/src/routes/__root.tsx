@@ -1,26 +1,62 @@
-import { createRootRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  redirect,
+} from "@tanstack/react-router";
+import { lazy } from "react";
 
-const backgroundSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='1.5' fill='%23000000' fill-opacity='0.5' /%3E%3C/svg%3E")`;
+import { BigLoader } from "@/components/shared/loader.component";
+import { BigError } from "@/components/shared/error.component";
+import AuthPage from "./auth.route";
+import Menu from "./menu.route";
+import { useAuthStore } from "@/stores/auth.store";
 
-const NotFoundRedirect = () => {
-  const navigate = useNavigate();
+const App = lazy(() => import("@/App"));
 
-  useEffect(() => {
-    navigate({ to: "/error", replace: true });
-  }, [navigate]);
-
-  return null;
-};
-
-export const Route = createRootRoute({
-  component: () => (
-    <main
-      className="h-screen w-screen bg-background relative overflow-hidden"
-      style={{ backgroundImage: backgroundSvg }}
-    >
-      <Outlet />
-    </main>
-  ),
-  notFoundComponent: NotFoundRedirect,
+const rootRoute = createRootRoute({
+  component: App,
 });
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: App,
+  pendingComponent: BigLoader,
+  beforeLoad: ({ matches }) => {
+    const isAuth = useAuthStore.getState().isAuthenticated;
+
+    for (const match of matches) {
+      if (match.routeId !== "/auth" && !isAuth) {
+        throw redirect({ to: "/auth", replace: true });
+      }
+    }
+  },
+});
+
+const errorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/error",
+  component: () => <BigError />,
+});
+
+const authRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth",
+  component: AuthPage,
+});
+const menuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/menu",
+  component: () => Menu,
+  pendingComponent: BigLoader,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  authRoute,
+  menuRoute,
+  errorRoute,
+]);
+
+export const router = createRouter({ routeTree });

@@ -18,9 +18,11 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
+    "konva": "^10.3.0",
     "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-konva": "^19.2.5",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.2",
     "zustand": "^5.0.14"

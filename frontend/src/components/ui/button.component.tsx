@@ -5,19 +5,15 @@ import { cn } from "@/lib/utils";
 import { SmallLoader } from "../shared/loader.component";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none cursor-pointer opacity-70 hover:opacity-100 text-center font-bold disabled:cursor-not-allowed border-2",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm text-text disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none cursor-pointer disabled:cursor-not-allowed font-extrabold border-2 boxShadow hover:brightness-110 active:brightness-90",
   {
     variants: {
       variant: {
-        default:
-          "bg-primary/20 text-text border-primary hover:bg-primary/20 hover:text-text active:bg-primary/40",
-        success:
-          "bg-success/20 text-text border-success hover:bg-success/60 active:bg-success/50",
-        error:
-          "bg-error/20 text-text border-error hover:bg-error/60 active:bg-error/50",
-        ghost:
-          "hover:bg-border/20 hover:text-text active:translate-x-0 active:translate-y-0 border-border",
-        link: "text-text underline-offset-2 hover:underline border-0",
+        default: "bg-primary border-border",
+        success: "bg-success border-border",
+        error: "bg-error border-border",
+        ghost: "border-transparent bg-transparent noShadow",
+        link: "underline-offset-4 hover:underline border-transparent shadow-none bg-transparent noShadow",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
@@ -62,4 +58,4 @@ function Button({
   );
 }
 
-export { Button, buttonVariants };
+export { Button };
