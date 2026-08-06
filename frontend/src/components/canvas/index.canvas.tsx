@@ -15,13 +15,11 @@ import {
 } from "@/config/canvas.config";
 import type { CanvasProps } from "@/types/canvas";
 import { useCanvasStore } from "@/stores/canvas.store";
-import {
-  useCanvasKeyboard,
-  useCanvasAPI,
-  useCanvasInteraction,
-  useCanvasToolShortcuts,
-} from "@/hooks/canvas.hook";
+
 import CanvasMagnifier from "./components/magnifier.canvas";
+import { useCanvasKeyboard } from "@/hooks/canvas/keyboard.hook";
+import { useCanvasInteraction } from "@/hooks/canvas/interaction.hook";
+import { useCanvasAPI } from "@/hooks/canvas/api.hook";
 
 export function CanvasComponent({
   className,
@@ -59,8 +57,7 @@ export function CanvasComponent({
     store.setPanOffset({ x: 0, y: 0 });
   }
 
-  useCanvasKeyboard();
-  useCanvasToolShortcuts(onToolChange, onToolCancel, tool);
+  useCanvasKeyboard(onToolChange, onToolCancel, tool);
 
   const { lines, currentPoints, mousePos, isAltPressed } = useCanvasStore();
 
@@ -96,11 +93,11 @@ export function CanvasComponent({
     drawingLayerRef,
   });
 
-  const api = useCanvasAPI(resetView);
+  const canvasApi = useCanvasAPI(resetView);
 
   useEffect(() => {
-    onMount?.(api);
-  }, [api, onMount]);
+    onMount?.(canvasApi);
+  }, [canvasApi, onMount]);
 
   return (
     <div
