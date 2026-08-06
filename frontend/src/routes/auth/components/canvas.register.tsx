@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button.component";
-import { Input } from "@/components/ui/input.component";
 import { Slider } from "@/components/ui/slider";
 import { CanvasComponent } from "@/components/canvas/index.canvas";
 import { cn } from "@/lib/utils";
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import type { CanvasAPI, CanvasTool } from "@/types/canvas";
 import { PALETTE_COLORS } from "@/config/canvas.config";
+import { ColorPicker } from "@/components/shared/picker.component";
 
 function CanvasRegister({
   setCurrentTab,
@@ -54,7 +54,7 @@ function CanvasRegister({
   }, []);
 
   const handleClear = useCallback(() => {
-    canvasApiRef.current?.clear();
+    if (confirm("Вы уверены?")) return canvasApiRef.current?.clear();
   }, []);
 
   const handleColorChange = useCallback((color: string) => {
@@ -184,14 +184,16 @@ function CanvasRegister({
         </div>
         {/*CUSTOM COLOR*/}
         <div className="flex flex-row p-1 items-center">
-          <Input
-            type="color"
-            value={selectedColor}
-            onChange={(e) => handleColorChange(e.target.value)}
-            className={cn(
-              "size-6 p-0 border-2 border-border cursor-pointer [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-none",
-            )}
-          />
+          <ColorPicker value={selectedColor} onChange={handleColorChange}>
+            <div
+              role="button"
+              className="size-6 border-border border-2 noShadow cursor-pointer transition-all hover:scale-110 p-0"
+              style={{
+                backgroundColor: selectedColor,
+              }}
+              title="Выбрать цвет"
+            />
+          </ColorPicker>
         </div>
         {/*SLIDERS*/}
         <div className="flex flex-col gap-4 flex-1 p-1">
@@ -235,7 +237,7 @@ function CanvasRegister({
         <Button variant="error" onClick={() => setCurrentTab("data")}>
           Назад
         </Button>
-        <Button variant="success" onClick={handleCreate}>
+        <Button variant="success" onClick={handleCreate} disabled={!!true}>
           Создать
         </Button>
       </div>

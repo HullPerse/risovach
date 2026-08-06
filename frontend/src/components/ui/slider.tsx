@@ -1,4 +1,4 @@
-import { Slider as SliderPrimitive } from "@base-ui/react/slider";
+﻿import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 
 import { cn } from "@/lib/utils";
 
@@ -8,10 +8,15 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  trackStyle,
+  showIndicator = true,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledby,
   ...props
-}: SliderPrimitive.Root.Props) {
+}: SliderPrimitive.Root.Props & {
+  trackStyle?: React.CSSProperties;
+  showIndicator?: boolean;
+}) {
   const _values = Array.isArray(value)
     ? value
     : Array.isArray(defaultValue)
@@ -33,11 +38,14 @@ function Slider({
         <SliderPrimitive.Track
           data-slot="slider-track"
           className="relative grow overflow-hidden border-2 bg-background select-none data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-3"
+          style={trackStyle}
         >
-          <SliderPrimitive.Indicator
-            data-slot="slider-range"
-            className="bg-primary select-none data-horizontal:h-full data-vertical:w-full"
-          />
+          {showIndicator !== false ? (
+            <SliderPrimitive.Indicator
+              data-slot="slider-range"
+              className="bg-primary select-none data-horizontal:h-full data-vertical:w-full"
+            />
+          ) : null}
         </SliderPrimitive.Track>
         {Array.from({ length: _values.length }, (_, index) => (
           <SliderPrimitive.Thumb

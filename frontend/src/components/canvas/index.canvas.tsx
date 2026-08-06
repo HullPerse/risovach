@@ -121,6 +121,11 @@ export function CanvasComponent({
         onMouseLeave={handleMouseLeave}
         className="overflow-hidden"
       >
+        {/*layers.map(() => ())*/}
+        {/*
+          if !selectedLayer return
+          else return allowActions
+          */}
         <Layer listening={false}>
           <Rect
             x={0}
