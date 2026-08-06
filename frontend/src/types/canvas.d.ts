@@ -42,6 +42,9 @@ export interface CanvasProps {
   brushSizeRange?: { min: number; max: number };
   onBrushSizeChange?: (size: number) => void;
   onOpacityChange?: (opacity: number) => void;
+  onColorPick?: (color: string) => void;
+  onToolChange?: (tool: CanvasTool) => void;
+  onToolCancel?: () => void;
   onMount?: (api: CanvasAPI) => void;
   zoom?: CanvasZoomConfig;
   limitToBounds?: boolean;
@@ -50,4 +53,4 @@ export interface CanvasProps {
   dimensions: { width: number; height: number };
 }
 
-export type CanvasTool = "draw" | "eraser";
+export type CanvasTool = "draw" | "eraser" | "eyedropper";

@@ -19,7 +19,9 @@ import {
   useCanvasKeyboard,
   useCanvasAPI,
   useCanvasInteraction,
+  useCanvasToolShortcuts,
 } from "@/hooks/canvas.hook";
+import CanvasMagnifier from "./components/magnifier.canvas";
 
 export function CanvasComponent({
   className,
@@ -35,6 +37,9 @@ export function CanvasComponent({
   opacity = DEFAULT_BRUSH_OPACITY,
   onBrushSizeChange,
   onOpacityChange,
+  onColorPick,
+  onToolChange,
+  onToolCancel,
   dimensions,
 }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +60,7 @@ export function CanvasComponent({
   }
 
   useCanvasKeyboard();
+  useCanvasToolShortcuts(onToolChange, onToolCancel, tool);
 
   const { lines, currentPoints, mousePos, isAltPressed } = useCanvasStore();
 
@@ -69,6 +75,7 @@ export function CanvasComponent({
     effectiveX,
     effectiveY,
     cursorStroke,
+    hoveredColor,
     circleFill,
   } = useCanvasInteraction({
     dimensions,
@@ -79,6 +86,9 @@ export function CanvasComponent({
     brushSizeRange,
     onBrushSizeChange,
     onOpacityChange,
+    onColorPick,
+    onToolChange,
+    onToolCancel,
     limitToBounds,
     panning,
     centerOnInit,
@@ -167,7 +177,19 @@ export function CanvasComponent({
           )}
         </Layer>
 
-        <Layer>
+        <Layer imageSmoothingEnabled={false}>
+          <CanvasMagnifier
+            tool={tool}
+            mousePos={mousePos}
+            hoveredColor={hoveredColor}
+            drawingLayerRef={drawingLayerRef}
+            effectiveScale={effectiveScale}
+            effectiveDimensions={{
+              x: effectiveX,
+              y: effectiveY,
+            }}
+          />
+
           {mousePos && (
             <Circle
               x={mousePos.x}

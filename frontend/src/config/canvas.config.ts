@@ -29,3 +29,7 @@ export const PALETTE_COLORS = [
   { name: "pink", hex: "#f06292" },
   { name: "teal", hex: "#26a69a" },
 ];
+
+export const MAG_SIZE = 130;
+export const MAG_SOURCE = 13;
+export const MAG_CELL = MAG_SIZE / MAG_SOURCE;

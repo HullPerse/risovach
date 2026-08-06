@@ -11,6 +11,7 @@ import {
   CANVAS_SIZE,
   clampOffset,
   clipPointsToCanvas,
+  hexFromPixelComposite,
   hexToRGB,
   isPointInCanvas,
 } from "@/lib/canvas.utils";
@@ -52,6 +53,48 @@ export function useCanvasKeyboard() {
   }, []);
 }
 
+export function useCanvasToolShortcuts(
+  onToolChange?: (tool: CanvasTool) => void,
+  onCancelTool?: () => void,
+  tool?: CanvasTool,
+) {
+  const onToolChangeRef = useRef(onToolChange);
+  const onCancelToolRef = useRef(onCancelTool);
+  const toolRef = useRef(tool);
+  onToolChangeRef.current = onToolChange;
+  onCancelToolRef.current = onCancelTool;
+  toolRef.current = tool;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("input, textarea, select, [contenteditable]")) {
+        return;
+      }
+      if (e.key === "Escape") {
+        if (toolRef.current === "eyedropper") {
+          e.preventDefault();
+          onCancelToolRef.current?.();
+        }
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === "b") {
+        e.preventDefault();
+        onToolChangeRef.current?.("draw");
+      } else if (key === "e") {
+        e.preventDefault();
+        onToolChangeRef.current?.("eraser");
+      } else if (key === "i") {
+        e.preventDefault();
+        onToolChangeRef.current?.("eyedropper");
+      }
+    };
+    globalThis.addEventListener("keydown", handleKeyDown);
+    return () => globalThis.removeEventListener("keydown", handleKeyDown);
+  }, []);
+}
+
 export function useCanvasAPI(resetView: () => void): CanvasAPI {
   const canUndo = useCanvasStore((s) => s.canUndo);
   const canRedo = useCanvasStore((s) => s.canRedo);
@@ -74,6 +117,9 @@ interface CanvasInteractionProps {
   brushSizeRange: { min: number; max: number };
   onBrushSizeChange?: (size: number) => void;
   onOpacityChange?: (opacity: number) => void;
+  onColorPick?: (color: string) => void;
+  onToolChange?: (tool: CanvasTool) => void;
+  onToolCancel?: () => void;
   limitToBounds: boolean;
   panning: CanvasPanningConfig;
   centerOnInit: boolean;
@@ -95,6 +141,9 @@ export function useCanvasInteraction({
   brushSizeRange,
   onBrushSizeChange,
   onOpacityChange,
+  onColorPick,
+  onToolChange,
+  onToolCancel,
   limitToBounds,
   panning,
   centerOnInit,
@@ -121,10 +170,16 @@ export function useCanvasInteraction({
   const colorRef = useRef(color);
   const brushSizeRef = useRef(brushSize);
   const opacityRef = useRef(opacity);
+  const onColorPickRef = useRef(onColorPick);
+  const onToolChangeRef = useRef(onToolChange);
+  const onToolCancelRef = useRef(onToolCancel);
   toolRef.current = tool;
   colorRef.current = color;
   brushSizeRef.current = brushSize;
   opacityRef.current = opacity;
+  onColorPickRef.current = onColorPick;
+  onToolChangeRef.current = onToolChange;
+  onToolCancelRef.current = onToolCancel;
 
   const zoomLevel = useCanvasStore((s) => s.zoomLevel);
   const panOffset = useCanvasStore((s) => s.panOffset);
@@ -179,6 +234,32 @@ export function useCanvasInteraction({
     x: (screenPos.x - effectiveX) / effectiveScale,
     y: (screenPos.y - effectiveY) / effectiveScale,
   });
+
+  const samplePixelData = (canvasPos: Point): Uint8ClampedArray | null => {
+    const layer = drawingLayerRef.current;
+    if (!layer) return null;
+    const canvas = layer.getCanvas();
+    const screenX = Math.round(canvasPos.x * effectiveScale + effectiveX);
+    const screenY = Math.round(canvasPos.y * effectiveScale + effectiveY);
+    if (
+      screenX < 0 ||
+      screenY < 0 ||
+      screenX >= canvas.getWidth() ||
+      screenY >= canvas.getHeight()
+    ) {
+      return null;
+    }
+    try {
+      return canvas.getContext().getImageData(screenX, screenY, 1, 1).data;
+    } catch {
+      return null;
+    }
+  };
+
+  const samplePixelHex = (canvasPos: Point): string | null => {
+    const data = samplePixelData(canvasPos);
+    return data ? hexFromPixelComposite(data) : null;
+  };
 
   const resetView = useCallback(() => {
     const clampedZoom = Math.max(
@@ -253,6 +334,12 @@ export function useCanvasInteraction({
     const button = e.evt.button;
     const store = useCanvasStore.getState();
 
+    if (toolRef.current === "eyedropper" && (button === 1 || button === 2)) {
+      e.evt.preventDefault();
+      onToolCancelRef.current?.();
+      return;
+    }
+
     const panButton =
       (button === 0 && allowLeft) ||
       (button === 1 && allowMiddle) ||
@@ -280,6 +367,15 @@ export function useCanvasInteraction({
     const canvasPos = getCanvasPos(pos);
     const margin = brushSize + 5;
     if (!isPointInCanvas(canvasPos, margin)) return;
+
+    if (toolRef.current === "eyedropper") {
+      const hex = samplePixelHex(canvasPos);
+      if (hex) {
+        onColorPickRef.current?.(hex);
+        onToolChangeRef.current?.("draw");
+      }
+      return;
+    }
 
     store.setIsDrawing(true);
     store.setCurrentPoints(clipPointsToCanvas([canvasPos]));
@@ -434,26 +530,19 @@ export function useCanvasInteraction({
   };
 
   let cursorStroke = "black";
-  if (mousePos && drawingLayerRef.current) {
-    try {
-      const ctx = drawingLayerRef.current.getCanvas().getContext();
-      const pixel = ctx.getImageData(
-        Math.round(mousePos.x * effectiveScale + effectiveX),
-        Math.round(mousePos.y * effectiveScale + effectiveY),
-        1,
-        1,
-      ).data;
-      cursorStroke = pixel[3] > 0 ? "white" : "black";
-    } catch {}
+  if (mousePos) {
+    const data = samplePixelData(mousePos);
+    cursorStroke = data && data[3] > 0 ? "white" : "black";
+  }
+
+  let hoveredColor: string | null = null;
+  if (mousePos && tool === "eyedropper" && isPointInCanvas(mousePos)) {
+    hoveredColor = samplePixelHex(mousePos);
   }
 
   const isAdjusting = isAltPressed && !!altStartRef.current;
 
   const circleFill = isAdjusting ? hexToRGB(color, opacity) : "transparent";
-
-  // const circleFill = isAdjusting
-  //   ? `rgba(255, 0, 0, ${opacity})`
-  //   : "transparent";
 
   return {
     handleWheel,
@@ -467,6 +556,7 @@ export function useCanvasInteraction({
     effectiveX,
     effectiveY,
     cursorStroke,
+    hoveredColor,
     isAdjusting,
     circleFill,
   };

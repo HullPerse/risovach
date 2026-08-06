@@ -51,3 +51,19 @@ export function hexToRGB(hex: string, alpha: number) {
 
   return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
 }
+
+export function hexFromPixelComposite(pixel: Uint8ClampedArray): string {
+  const [r, g, b, a] = pixel;
+  const alpha = a / 255;
+  const inv = 1 - alpha;
+  const fr = Math.round(r * alpha + 255 * inv);
+  const fg = Math.round(g * alpha + 255 * inv);
+  const fb = Math.round(b * alpha + 255 * inv);
+
+  return (
+    "#" +
+    [fr, fg, fb]
+      .map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}

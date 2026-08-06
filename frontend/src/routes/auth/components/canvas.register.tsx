@@ -1,10 +1,17 @@
 import { Button } from "@/components/ui/button.component";
 import { Input } from "@/components/ui/input.component";
 import { Slider } from "@/components/ui/slider";
-import { CanvasComponent } from "@/components/shared/canvas.component";
+import { CanvasComponent } from "@/components/canvas/index.canvas";
 import { cn } from "@/lib/utils";
 import { useRef, useState, useCallback } from "react";
-import { Pencil, Eraser, Undo2, Redo2, Trash2, RefreshCcw } from "lucide-react";
+import {
+  Pencil,
+  Eraser,
+  Pipette,
+  Undo2,
+  Redo2,
+  RefreshCcw,
+} from "lucide-react";
 import type { CanvasAPI, CanvasTool } from "@/types/canvas";
 import { PALETTE_COLORS } from "@/config/canvas.config";
 
@@ -18,13 +25,24 @@ function CanvasRegister({
   const [selectedColor, setSelectedColor] = useState("#000000");
   const [selectedSize, setSelectedSize] = useState(8);
   const [selectedOpacity, setSelectedOpacity] = useState(1);
+  const prevToolRef = useRef<CanvasTool>("draw");
 
   const handleMount = useCallback((api: CanvasAPI) => {
     canvasApiRef.current = api;
   }, []);
 
-  const handleToolChange = useCallback((tool: CanvasTool) => {
-    setSelectedTool(tool);
+  const handleToolChange = useCallback(
+    (tool: CanvasTool) => {
+      if (tool === "eyedropper") {
+        prevToolRef.current = selectedTool;
+      }
+      setSelectedTool(tool);
+    },
+    [selectedTool],
+  );
+
+  const handleToolCancelEyedropper = useCallback(() => {
+    setSelectedTool(prevToolRef.current);
   }, []);
 
   const handleUndo = useCallback(() => {
@@ -52,6 +70,10 @@ function CanvasRegister({
     setSelectedOpacity(opacity);
   }, []);
 
+  const handleColorPick = useCallback((color: string) => {
+    setSelectedColor(color);
+  }, []);
+
   const handleCreate = useCallback(() => {}, []);
 
   return (
@@ -66,6 +88,9 @@ function CanvasRegister({
         brushSizeRange={{ min: 1, max: 100 }}
         onBrushSizeChange={handleSizeChange}
         onOpacityChange={handleOpacityChange}
+        onColorPick={handleColorPick}
+        onToolChange={handleToolChange}
+        onToolCancel={handleToolCancelEyedropper}
         zoom={{
           initialZoom: 1,
         }}
@@ -74,7 +99,7 @@ function CanvasRegister({
 
       <section className="flex flex-row w-full h-20 boxShadow border-2 border-border">
         {/*TOOLS*/}
-        <div className="grid grid-cols-1 grid-rows-2 p-1 gap-1">
+        <div className="grid grid-cols-2 grid-rows-2 p-0.5 gap-0.5">
           <Button
             size="icon"
             className={cn(
@@ -100,6 +125,19 @@ function CanvasRegister({
             aria-label="Ластик"
           >
             <Eraser className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            className={cn(
+              "size-8 noShadow",
+              selectedTool === "eyedropper"
+                ? "bg-primary border-border"
+                : "bg-transparent border-border/30 hover:bg-primary/30 hover:border-border/60",
+            )}
+            onClick={() => handleToolChange("eyedropper")}
+            aria-label="Пипетка"
+          >
+            <Pipette className="size-4" />
           </Button>
         </div>
         {/*UNDO REDO*/}
