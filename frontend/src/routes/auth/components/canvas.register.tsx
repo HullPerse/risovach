@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button.component";
-import { Slider } from "@/components/ui/slider";
+import { Slider } from "@/components/ui/slider.component";
 import { CanvasComponent } from "@/components/canvas/index.canvas";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/index.utils";
 import { useRef, useState, useCallback } from "react";
 import {
   Pencil,
@@ -13,14 +13,18 @@ import {
 } from "lucide-react";
 import type { CanvasAPI, CanvasTool } from "@/types/canvas";
 import { PALETTE_COLORS } from "@/config/canvas.config";
-import { ColorPicker } from "@/components/shared/picker.component";
+import { ColorPicker } from "@/components/picker/index.picker";
+import { useCanvasStore } from "@/stores/canvas.store";
 
 function CanvasRegister({
   setCurrentTab,
+  onCreate,
 }: {
-  setCurrentTab: (value: "data" | "canvas") => void;
+  setCurrentTab: (value: "data" | "canvas" | "preview") => void;
+  onCreate: (file: File | null) => void;
 }) {
   const canvasApiRef = useRef<CanvasAPI | null>(null);
+  const lines = useCanvasStore((s) => s.lines);
   const [selectedTool, setSelectedTool] = useState<CanvasTool>("draw");
   const [selectedColor, setSelectedColor] = useState("#000000");
   const [selectedSize, setSelectedSize] = useState(8);
@@ -74,7 +78,10 @@ function CanvasRegister({
     setSelectedColor(color);
   }, []);
 
-  const handleCreate = useCallback(() => {}, []);
+  const handleCreate = useCallback(async () => {
+    const file = await canvasApiRef.current?.requestImage();
+    onCreate(file ?? null);
+  }, [onCreate]);
 
   return (
     <main className="flex flex-col gap-4 w-full items-center">
@@ -237,7 +244,11 @@ function CanvasRegister({
         <Button variant="error" onClick={() => setCurrentTab("data")}>
           Назад
         </Button>
-        <Button variant="success" onClick={handleCreate} disabled={!!true}>
+        <Button
+          variant="success"
+          onClick={handleCreate}
+          disabled={lines.length === 0}
+        >
           Создать
         </Button>
       </div>

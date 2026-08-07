@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type Konva from "konva";
 import { useCanvasStore } from "@/stores/canvas.store";
 import type { Point } from "@/types/canvas";
-import { CANVAS_SIZE, hexToRGB, isPointInCanvas } from "@/lib/canvas.utils";
+import { hexToRGB, isPointInCanvas } from "@/lib/canvas.utils";
 
 import type { CanvasInteractionProps } from "@/types/canvas";
 import { CanvasViewport } from "@/api/canvas/viewport.api";
@@ -16,20 +16,10 @@ export function useCanvasInteraction(props: CanvasInteractionProps) {
   const altAdjustRef = useRef<CanvasAltAdjust | null>(null);
   const eyedropperRef = useRef<CanvasEyedropper | null>(null);
 
-  if (viewportRef.current === null) {
-    viewportRef.current = new CanvasViewport();
-  }
-
-  if (drawingRef.current === null) {
-    drawingRef.current = new CanvasDrawing();
-  }
-
-  if (altAdjustRef.current === null) {
-    altAdjustRef.current = new CanvasAltAdjust();
-  }
-  if (eyedropperRef.current === null) {
-    eyedropperRef.current = new CanvasEyedropper();
-  }
+  if (!viewportRef.current) viewportRef.current = new CanvasViewport();
+  if (!drawingRef.current) drawingRef.current = new CanvasDrawing();
+  if (!altAdjustRef.current) altAdjustRef.current = new CanvasAltAdjust();
+  if (!eyedropperRef.current) eyedropperRef.current = new CanvasEyedropper();
 
   const viewport = viewportRef.current;
   const drawing = drawingRef.current;
@@ -42,15 +32,17 @@ export function useCanvasInteraction(props: CanvasInteractionProps) {
   const mousePos = useCanvasStore((s) => s.mousePos);
 
   const fitScale = Math.min(
-    props.dimensions.width / CANVAS_SIZE,
-    props.dimensions.height / CANVAS_SIZE,
+    props.dimensions.width / props.dimensions.width,
+    props.dimensions.height / props.dimensions.height,
   );
   const effectiveScale = fitScale * zoomLevel;
   const centerScale = props.centerOnInit ? effectiveScale : fitScale;
   const effectiveX =
-    (props.dimensions.width - CANVAS_SIZE * centerScale) / 2 + panOffset.x;
+    (props.dimensions.width - props.dimensions.width * centerScale) / 2 +
+    panOffset.x;
   const effectiveY =
-    (props.dimensions.height - CANVAS_SIZE * centerScale) / 2 + panOffset.y;
+    (props.dimensions.height - props.dimensions.height * centerScale) / 2 +
+    panOffset.y;
 
   const transform = {
     fitScale,
@@ -61,8 +53,8 @@ export function useCanvasInteraction(props: CanvasInteractionProps) {
   };
 
   viewport.setContext(props, transform);
-  drawing.setContext(props, transform);
-  altAdjust.setContext(props, transform);
+  drawing.setContext(props);
+  altAdjust.setContext(props);
   eyedropper.setContext(props, transform);
 
   const getCanvasPos = (screenPos: Point): Point => ({
@@ -108,7 +100,7 @@ export function useCanvasInteraction(props: CanvasInteractionProps) {
     if (!pos) return;
     const canvasPos = getCanvasPos(pos);
     const margin = props.brushSize + 5;
-    if (!isPointInCanvas(canvasPos, margin)) return;
+    if (!isPointInCanvas(canvasPos, props.dimensions, margin)) return;
 
     if (eyedropper.pick(canvasPos)) return;
     drawing.start(canvasPos);
@@ -155,7 +147,11 @@ export function useCanvasInteraction(props: CanvasInteractionProps) {
   }
 
   let hoveredColor: string | null = null;
-  if (mousePos && props.tool === "eyedropper" && isPointInCanvas(mousePos)) {
+  if (
+    mousePos &&
+    props.tool === "eyedropper" &&
+    isPointInCanvas(mousePos, props.dimensions)
+  ) {
     hoveredColor = eyedropper.samplePixelHex(mousePos);
   }
 

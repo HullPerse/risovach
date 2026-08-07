@@ -1,13 +1,15 @@
 import type { Point } from "@/types/canvas";
 
-export const CANVAS_SIZE = 640;
-
-export function isPointInCanvas(point: Point, margin: number = 0): boolean {
+export function isPointInCanvas(
+  point: Point,
+  dimensions: { width: number; height: number },
+  margin: number = 0,
+): boolean {
   return (
     point.x >= -margin &&
-    point.x <= CANVAS_SIZE + margin &&
+    point.x <= dimensions.width + margin &&
     point.y >= -margin &&
-    point.y <= CANVAS_SIZE + margin
+    point.y <= dimensions.height + margin
   );
 }
 
@@ -20,27 +22,30 @@ export function clampOffset(
 ): Point {
   if (!limitToBounds) return offset;
   const minX =
-    -(dimensions.width - CANVAS_SIZE * centerScale) / 2 -
-    CANVAS_SIZE * effectiveScale;
+    -(dimensions.width - dimensions.width * centerScale) / 2 -
+    dimensions.width * effectiveScale;
   const maxX =
-    dimensions.width - (dimensions.width - CANVAS_SIZE * centerScale) / 2;
+    dimensions.width - (dimensions.width - dimensions.width * centerScale) / 2;
   const minY =
-    -(dimensions.height - CANVAS_SIZE * centerScale) / 2 -
-    CANVAS_SIZE * effectiveScale;
+    -(dimensions.height - dimensions.height * centerScale) / 2 -
+    dimensions.height * effectiveScale;
   const maxY =
-    dimensions.height - (dimensions.height - CANVAS_SIZE * centerScale) / 2;
+    dimensions.height - (dimensions.height - dimensions.height * centerScale) / 2;
   return {
     x: Math.max(minX, Math.min(maxX, offset.x)),
     y: Math.max(minY, Math.min(maxY, offset.y)),
   };
 }
 
-export function clipPointsToCanvas(points: Point[]): Point[] {
+export function clipPointsToCanvas(
+  points: Point[],
+  dimensions: { width: number; height: number },
+): Point[] {
   if (points.length === 0) return points;
   const margin = 0;
   return points.map((p) => ({
-    x: Math.max(-margin, Math.min(CANVAS_SIZE + margin, p.x)),
-    y: Math.max(-margin, Math.min(CANVAS_SIZE + margin, p.y)),
+    x: Math.max(-margin, Math.min(dimensions.width + margin, p.x)),
+    y: Math.max(-margin, Math.min(dimensions.height + margin, p.y)),
   }));
 }
 

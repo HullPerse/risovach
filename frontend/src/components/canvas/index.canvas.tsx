@@ -1,8 +1,7 @@
 import { Stage, Layer, Line, Rect, Circle } from "react-konva";
 import Konva from "konva";
-import { useRef, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { CANVAS_SIZE } from "@/lib/canvas.utils";
+import { useRef, useEffect, useCallback } from "react";
+import { cn } from "@/lib/index.utils";
 import {
   MIN_ZOOM,
   MAX_ZOOM,
@@ -13,7 +12,7 @@ import {
   DEFAULT_BRUSH_SIZE_RANGE,
   DEFAULT_BRUSH_OPACITY,
 } from "@/config/canvas.config";
-import type { CanvasProps } from "@/types/canvas";
+import type { CanvasProps, RequestImageOptions } from "@/types/canvas";
 import { useCanvasStore } from "@/stores/canvas.store";
 
 import CanvasMagnifier from "./components/magnifier.canvas";
@@ -93,7 +92,58 @@ export function CanvasComponent({
     drawingLayerRef,
   });
 
-  const canvasApi = useCanvasAPI(resetView);
+  const requestImage = useCallback(
+    async (options?: RequestImageOptions): Promise<File | null> => {
+      const layer = drawingLayerRef.current;
+      const stage = stageRef.current;
+      if (!layer || !stage) return null;
+
+      const prevScaleX = stage.scaleX();
+      const prevScaleY = stage.scaleY();
+      const prevX = stage.x();
+      const prevY = stage.y();
+
+      stage.scaleX(1);
+      stage.scaleY(1);
+      stage.x(0);
+      stage.y(0);
+      stage.draw();
+
+      const canvas = layer.toCanvas({
+        x: 0,
+        y: 0,
+        width: dimensions.width,
+        height: dimensions.height,
+        pixelRatio: 1,
+      });
+
+      stage.scaleX(prevScaleX);
+      stage.scaleY(prevScaleY);
+      stage.x(prevX);
+      stage.y(prevY);
+      stage.draw();
+
+      const output = document.createElement("canvas");
+      output.width = dimensions.width;
+      output.height = dimensions.height;
+      const ctx = output.getContext("2d");
+      if (!ctx) return null;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+      ctx.drawImage(canvas, 0, 0);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        output.toBlob(resolve, "image/png"),
+      );
+      if (!blob) return null;
+
+      const filename = options?.filename ?? `canvas-${Date.now()}.png`;
+      return new File([blob], filename, { type: "image/png" });
+    },
+    [dimensions],
+  );
+
+  const canvasApi = useCanvasAPI(resetView, requestImage);
 
   useEffect(() => {
     onMount?.(canvasApi);
@@ -130,8 +180,8 @@ export function CanvasComponent({
           <Rect
             x={0}
             y={0}
-            width={CANVAS_SIZE}
-            height={CANVAS_SIZE}
+            width={dimensions.width}
+            height={dimensions.height}
             fill="white"
             stroke="black"
             strokeWidth={0.1}
@@ -142,8 +192,8 @@ export function CanvasComponent({
           ref={drawingLayerRef}
           clipX={0}
           clipY={0}
-          clipWidth={CANVAS_SIZE}
-          clipHeight={CANVAS_SIZE}
+          clipWidth={dimensions.width}
+          clipHeight={dimensions.height}
         >
           {lines.map((line, i) => (
             <Line

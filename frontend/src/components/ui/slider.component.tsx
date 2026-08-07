@@ -1,6 +1,7 @@
 ﻿import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/index.utils";
+import type { CSSProperties } from "react";
 
 function Slider({
   className,
@@ -14,7 +15,7 @@ function Slider({
   "aria-labelledby": ariaLabelledby,
   ...props
 }: SliderPrimitive.Root.Props & {
-  trackStyle?: React.CSSProperties;
+  trackStyle?: CSSProperties;
   showIndicator?: boolean;
 }) {
   const _values = Array.isArray(value)
@@ -37,8 +38,11 @@ function Slider({
       <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden border-2 bg-background select-none data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-3"
-          style={trackStyle}
+          className="relative grow overflow-hidden border-2 bg-background select-none data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-3 min-h-2"
+          style={{
+            ...trackStyle,
+            minHeight: showIndicator ? "2px" : undefined,
+          }}
         >
           {showIndicator !== false ? (
             <SliderPrimitive.Indicator

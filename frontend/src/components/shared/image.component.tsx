@@ -1,7 +1,14 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ImgHTMLAttributes,
+} from "react";
+import { cn } from "@/lib/index.utils";
 
-interface ImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface ImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
   className?: string;

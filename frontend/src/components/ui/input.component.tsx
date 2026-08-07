@@ -5,9 +5,9 @@ import {
   EyeOffIcon,
   InfinityIcon,
 } from "lucide-react";
-import * as React from "react";
 import { Input as InputPrimitive } from "@base-ui/react/input";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/index.utils";
+import { useRef, useState, type ChangeEvent, type ComponentProps } from "react";
 
 function Input({
   className,
@@ -17,16 +17,16 @@ function Input({
   amount,
   onChange,
   ...props
-}: React.ComponentProps<"input"> & { arrows?: boolean; amount?: boolean }) {
-  const [visiblePassword, setVisiblePassword] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [internalValue, setInternalValue] = React.useState(value);
+}: ComponentProps<"input"> & { arrows?: boolean; amount?: boolean }) {
+  const [visiblePassword, setVisiblePassword] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [internalValue, setInternalValue] = useState(value);
   const inputValue = value !== undefined ? value : internalValue;
 
   const inputType = type === "password" && visiblePassword ? "text" : type;
   const showAmount = amount && (props.min || props.max);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const max = Number(props.max);
     const clampedValue =
       !isNaN(max) && e.target.value.length > max
@@ -39,15 +39,14 @@ function Input({
     };
 
     onChange?.(syntheticEvent);
-    if (value === undefined) {
-      setInternalValue(clampedValue);
-    }
+
+    if (value === undefined) setInternalValue(clampedValue);
   };
 
   const updateValue = (newValue: string) => {
     const syntheticEvent = {
       target: { value: newValue },
-    } as React.ChangeEvent<HTMLInputElement>;
+    } as ChangeEvent<HTMLInputElement>;
     handleChange(syntheticEvent);
   };
 
@@ -59,8 +58,10 @@ function Input({
     const clamped = (() => {
       if (!isNaN(min) && next < min) return String(min);
       if (!isNaN(max) && next > max) return String(max);
+
       return String(next);
     })();
+
     updateValue(clamped);
   };
 

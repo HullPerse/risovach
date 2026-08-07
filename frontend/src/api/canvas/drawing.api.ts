@@ -1,16 +1,12 @@
 import { clipPointsToCanvas, isPointInCanvas } from "@/lib/canvas.utils";
 import { useCanvasStore } from "@/stores/canvas.store";
-import type {
-  CanvasInteractionProps,
-  CanvasTransform,
-  Point,
-} from "@/types/canvas";
+import type { CanvasInteractionProps, Point } from "@/types/canvas";
 
 export class CanvasDrawing {
   private props!: CanvasInteractionProps;
-  private wasOutside = false;
+  private wasOutside: boolean = false;
 
-  setContext(props: CanvasInteractionProps, _transform: CanvasTransform): void {
+  setContext(props: CanvasInteractionProps): void {
     this.props = props;
   }
 
@@ -20,14 +16,16 @@ export class CanvasDrawing {
 
   start(canvasPos: Point): void {
     this.store.setIsDrawing(true);
-    this.store.setCurrentPoints(clipPointsToCanvas([canvasPos]));
+    this.store.setCurrentPoints(
+      clipPointsToCanvas([canvasPos], this.props.dimensions),
+    );
   }
 
   move(canvasPos: Point): void {
     const store = this.store;
     const margin = this.props.brushSize + 5;
 
-    if (!isPointInCanvas(canvasPos, margin)) {
+    if (!isPointInCanvas(canvasPos, this.props.dimensions, margin)) {
       if (store.currentPoints.length > 0) {
         this.saveStroke();
         this.wasOutside = true;
@@ -40,11 +38,13 @@ export class CanvasDrawing {
 
     if (this.wasOutside) {
       this.wasOutside = false;
-      store.setCurrentPoints(clipPointsToCanvas([canvasPos]));
+      store.setCurrentPoints(
+        clipPointsToCanvas([canvasPos], this.props.dimensions),
+      );
       return;
     }
 
-    const clipped = clipPointsToCanvas([canvasPos]);
+    const clipped = clipPointsToCanvas([canvasPos], this.props.dimensions);
     const prev = store.currentPoints;
     if (prev.length === 0) {
       store.setCurrentPoints(clipped);

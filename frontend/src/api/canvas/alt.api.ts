@@ -1,11 +1,6 @@
 import type Konva from "konva";
 import { useCanvasStore } from "@/stores/canvas.store";
-import type {
-  AltStart,
-  CanvasInteractionProps,
-  CanvasTransform,
-  Point,
-} from "@/types/canvas";
+import type { AltStart, CanvasInteractionProps, Point } from "@/types/canvas";
 
 const LOCK_THRESHOLD = 5;
 
@@ -15,7 +10,7 @@ export class CanvasAltAdjust {
   private lockedAxis: "x" | "y" | null = null;
   private lastPos: Point | null = null;
 
-  setContext(props: CanvasInteractionProps, _transform: CanvasTransform): void {
+  setContext(props: CanvasInteractionProps): void {
     this.props = props;
   }
 

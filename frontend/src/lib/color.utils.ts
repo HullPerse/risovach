@@ -1,4 +1,10 @@
-import type { ColorFormat, HSL, HSV, RGB } from "@/types/color";
+import type {
+  ChannelFormat,
+  ColorFormat,
+  HSL,
+  HSV,
+  RGB,
+} from "@/types/color";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -134,6 +140,18 @@ export function hexToHsv(hex: string): HSV | null {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
   return rgbToHsv(rgb);
+}
+
+export function hsvToChannelStrings(
+  hsv: HSV,
+  format: ChannelFormat,
+): [string, string, string] {
+  if (format === "rgb") {
+    const { r, g, b } = hsvToRgb(hsv);
+    return [String(r), String(g), String(b)];
+  }
+  const { h, s, l } = rgbToHsl(hsvToRgb(hsv));
+  return [String(h), String(s), String(l)];
 }
 
 export function formatColor(hsv: HSV, format: ColorFormat): string {

@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/index.utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode } from "react";
 

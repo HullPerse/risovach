@@ -1,19 +1,29 @@
 import { Button } from "@/components/ui/button.component";
 import { Input } from "@/components/ui/input.component";
-import { useState } from "react";
 
 function DataRegister({
   setTab,
   setCurrentTab,
+  username,
+  setUsername,
+  password,
+  setPassword,
 }: {
   setTab: (value: "login" | "register") => void;
-  setCurrentTab: (value: "data" | "canvas") => void;
+  setCurrentTab: (value: "data" | "canvas" | "preview") => void;
+  username: string;
+  setUsername: (value: string) => void;
+  password: string;
+  setPassword: (value: string) => void;
 }) {
-  const [username, setUsername] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-
   return (
-    <main className="flex flex-col gap-2 items-center w-full">
+    <main
+      className="flex flex-col gap-2 items-center w-full"
+      onKeyDown={(e) => {
+        if (username && password && e.key === "Enter")
+          return setCurrentTab("canvas");
+      }}
+    >
       <div className="flex flex-col leading-tight w-full">
         <label className="text-muted text-xs">Имя пользователя</label>
         <Input
@@ -42,6 +52,7 @@ function DataRegister({
           setCurrentTab("canvas");
         }}
         className="w-full"
+        disabled={!username || !password}
       >
         Создать аватар
       </Button>

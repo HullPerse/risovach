@@ -14,6 +14,10 @@ export interface DrawingLine {
   tool: CanvasTool;
 }
 
+export interface RequestImageOptions {
+  filename?: string;
+}
+
 export interface CanvasAPI {
   undo: () => void;
   redo: () => void;
@@ -21,6 +25,7 @@ export interface CanvasAPI {
   resetView: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  requestImage: (options?: RequestImageOptions) => Promise<File | null>;
 }
 
 export interface CanvasZoomConfig {

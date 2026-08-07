@@ -1,5 +1,5 @@
 import type Konva from "konva";
-import { CANVAS_SIZE, clampOffset } from "@/lib/canvas.utils";
+import { clampOffset } from "@/lib/canvas.utils";
 import { useCanvasStore } from "@/stores/canvas.store";
 import type {
   CanvasInteractionProps,
@@ -138,11 +138,15 @@ export class CanvasViewport {
         x:
           pointer.x -
           canvasX * zoom.scale -
-          (this.props.dimensions.width - CANVAS_SIZE * zoom.center) / 2,
+          (this.props.dimensions.width -
+            this.props.dimensions.width * zoom.center) /
+            2,
         y:
           pointer.y -
           canvasY * zoom.scale -
-          (this.props.dimensions.height - CANVAS_SIZE * zoom.center) / 2,
+          (this.props.dimensions.height -
+            this.props.dimensions.height * zoom.center) /
+            2,
       },
       this.props.dimensions,
       zoom.center,
