@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import DotsBackground from "@/components/shared/dots-background.component";
 import { useUserStore } from "@/stores/user.store";
 
 const App = () => {
@@ -29,12 +30,12 @@ const App = () => {
   return (
     <div
       className="bg-background relative h-screen w-screen overflow-hidden"
-      style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='1.5' fill='%23000000' fill-opacity='0.5' /%3E%3C/svg%3E")`,
-      }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Outlet />
+      <DotsBackground />
+      <div className="pointer-events-none relative z-10 h-full w-full">
+        <Outlet />
+      </div>
     </div>
   );
 };

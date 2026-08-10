@@ -1,4 +1,3 @@
-// oxlint-disable react/only-export-components, github/filenames-match-regex
 import {
   createRootRoute,
   createRoute,
@@ -22,7 +21,7 @@ const requireAuth = () => async () => {
   throw redirect({ replace: true, to: "/auth" });
 };
 
-const App = lazy(() => import("@/app"));
+const App = lazy(() => import("@/App"));
 
 const rootRoute = createRootRoute({
   component: App,

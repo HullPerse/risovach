@@ -96,6 +96,37 @@
   box-shadow: 0px 0px 0px 0px transparent;
 }
 
+/* Dots background */
+.dot-grid-dot {
+  fill: color-mix(in srgb, var(--color-text) 50%, transparent);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform 0.15s ease,
+    fill 0.15s ease;
+  pointer-events: none;
+}
+
+.dot-grid-dot.is-hovered {
+  fill: var(--color-primary);
+  transform: scale(2);
+}
+
+.dot-grid-line {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: dot-grid-draw 0.25s ease forwards;
+}
+
+@keyframes dot-grid-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes loader-dots {
   0%,
   100% {

@@ -17,7 +17,7 @@ export function WindowComponent({
   return (
     <main
       className={cn(
-        "bg-background border-border boxShadow flex max-h-[calc(100dvh-4rem)] w-full flex-col border-4 md:w-xl",
+        "bg-background border-border boxShadow pointer-events-auto flex h-full w-full flex-col border-4 md:h-fit md:max-h-[calc(100dvh-4rem)] md:w-xl",
         className
       )}
     >
