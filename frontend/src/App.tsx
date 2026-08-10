@@ -1,7 +1,7 @@
 import { Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import DotsBackground from "@/components/shared/dots-background.component";
+import DotsBackground from "@/components/shared/dots.component";
 import { useUserStore } from "@/stores/user.store";
 
 const App = () => {

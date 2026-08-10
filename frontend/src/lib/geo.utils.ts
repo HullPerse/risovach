@@ -23,11 +23,10 @@ const GEO_TIMEOUT_MS = 5000;
 const REVERSE_GEOCODING_URL =
   "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10";
 
-const deferred = <T,>(): Deferred<T> => {
+const deferred = <T>(): Deferred<T> => {
   let reject!: (reason?: unknown) => void;
   let resolve!: (value: T) => void;
 
-  // oxlint-disable-next-line promise/avoid-new
   const promise = new Promise<T>((_resolve, _reject) => {
     reject = _reject;
     resolve = _resolve;
@@ -98,6 +97,7 @@ export const requestBrowserGeo = async (): Promise<BrowserGeo | null> => {
     const {
       coords: { latitude, longitude },
     } = await getPosition();
+
     return await reverseGeocode(latitude, longitude);
   } catch {
     return null;

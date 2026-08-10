@@ -1,0 +1,11 @@
+export const SPACING = 40;
+export const HOVER_RADIUS = 100;
+export const SNAP_RADIUS = 22;
+export const MAX_DOTS = 3500;
+export const ERASE_RADIUS = 8;
+export const LINE_LIFETIME_MS = 10 * 1000;
+export const LINE_FADE_MS = 600;
+export const PRUNE_INTERVAL_MS = 500;
+export const STAGGER_MS_PER_PX = 0.25;
+export const SVG_NS = "http://www.w3.org/2000/svg";
+export const PROXIMITY_VAR = "--proximity";

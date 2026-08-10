@@ -10,17 +10,9 @@ import { useCanvasStore } from "@/stores/canvas.store";
 import type { CanvasInteractionProps, Point } from "@/types/canvas";
 
 export const useCanvasInteraction = (props: CanvasInteractionProps) => {
-  // The tool instances hold in-progress gesture state (pan start, stroke
-  // points, alt-adjust position) and are read during render, so they must
-  // keep a stable identity. React Doctor's no-effect-with-fresh-deps and
-  // exhaustive-deps require exactly this; the manual cache carries behavior.
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization
   const viewport = useMemo(() => new CanvasViewport(), []);
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization
   const drawing = useMemo(() => new CanvasDrawing(), []);
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization
   const altAdjust = useMemo(() => new CanvasAltAdjust(), []);
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization
   const eyedropper = useMemo(() => new CanvasEyedropper(), []);
 
   const zoomLevel = useCanvasStore((s) => s.zoomLevel);
@@ -64,10 +56,6 @@ export const useCanvasInteraction = (props: CanvasInteractionProps) => {
     prevAltRef.current = isAltPressed;
   }, [altAdjust, isAltPressed]);
 
-  // Shared by the global mouseup listener and the canvas mouseleave handler.
-  // It must stay stable so the listener subscribes only once
-  // (react-doctor/advanced-event-handler-refs).
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization
   const endStroke = useCallback(() => {
     const store = useCanvasStore.getState();
     if (store.isDrawing) {

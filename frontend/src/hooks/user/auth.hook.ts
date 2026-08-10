@@ -1,6 +1,3 @@
-// oxlint-disable react-doctor/query-mutation-missing-invalidation
-// Auth state lives in the zustand user store, not in the react-query
-// cache, so there is no server query to invalidate after these mutations.
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
