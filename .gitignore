@@ -137,3 +137,6 @@ dist
 old
 
 backend/elysia
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
