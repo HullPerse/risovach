@@ -9,25 +9,25 @@ export const DEFAULT_PANNING = {
   allowRightClickPan: true,
 } as const;
 
-export const DEFAULT_BRUSH_SIZE_RANGE = { min: 0, max: 100 } as const;
+export const DEFAULT_BRUSH_SIZE_RANGE = { max: 100, min: 0 } as const;
 export const DEFAULT_BRUSH_OPACITY = 1;
 
 export const PALETTE_COLORS = [
-  { name: "black", hex: "#000000" },
-  { name: "grey", hex: "#808080" },
-  { name: "white", hex: "#ffffff" },
-  { name: "red", hex: "#e53935" },
-  { name: "light-red", hex: "#ff8a80" },
-  { name: "orange", hex: "#ff8a65" },
-  { name: "yellow", hex: "#ffd54f" },
-  { name: "light-green", hex: "#81c784" },
-  { name: "green", hex: "#4caf50" },
-  { name: "light-blue", hex: "#8ab4ff" },
-  { name: "blue", hex: "#3d7eff" },
-  { name: "violet", hex: "#7c4dff" },
-  { name: "light-violet", hex: "#c8bfff" },
-  { name: "pink", hex: "#f06292" },
-  { name: "teal", hex: "#26a69a" },
+  { hex: "#000000", name: "black" },
+  { hex: "#808080", name: "grey" },
+  { hex: "#ffffff", name: "white" },
+  { hex: "#e53935", name: "red" },
+  { hex: "#ff8a80", name: "light-red" },
+  { hex: "#ff8a65", name: "orange" },
+  { hex: "#ffd54f", name: "yellow" },
+  { hex: "#81c784", name: "light-green" },
+  { hex: "#4caf50", name: "green" },
+  { hex: "#8ab4ff", name: "light-blue" },
+  { hex: "#3d7eff", name: "blue" },
+  { hex: "#7c4dff", name: "violet" },
+  { hex: "#c8bfff", name: "light-violet" },
+  { hex: "#f06292", name: "pink" },
+  { hex: "#26a69a", name: "teal" },
 ];
 
 export const MAG_SIZE = 130;

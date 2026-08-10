@@ -1,54 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
+
 import { Input } from "@/components/ui/input.component";
 import { Slider } from "@/components/ui/slider.component";
 import { FORMAT_PREFIX, FORMATS } from "@/config/color.config";
 import { formatColor, hexToHsv, hsvToHex, parseColor } from "@/lib/color.utils";
 import { cn } from "@/lib/index.utils";
 import type { ColorFormat, ColorPickerPanelProps, HSV } from "@/types/color";
+
 import { ChannelInputs } from "./channels.picker";
 import { SaturationValueArea } from "./saturation.picker";
 
-export function ColorPickerPanel({
+export const ColorPickerPanel = ({
   value,
   onChange,
   className,
-}: ColorPickerPanelProps) {
+}: ColorPickerPanelProps) => {
   const [hsv, setHsv] = useState<HSV>(
-    () => hexToHsv(value) ?? { h: 220, s: 40, v: 100 },
+    () => hexToHsv(value) ?? { h: 220, s: 40, v: 100 }
   );
   const [format, setFormat] = useState<ColorFormat>("hex");
   const [inputText, setInputText] = useState("");
   const [invalid, setInvalid] = useState(false);
-  const editingRef = useRef(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [prevValue, setPrevValue] = useState(value);
 
-  useEffect(() => {
-    if (editingRef.current) return;
-    const next = hexToHsv(value);
-    setHsv((prev) => {
-      if (next && hsvToHex(next) !== hsvToHex(prev)) return next;
-      return prev;
-    });
-  }, [value]);
-
-  useEffect(() => {
-    if (!editingRef.current) {
-      setInputText(formatColor(hsv, format));
-      setInvalid(false);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (!isEditing) {
+      const next = hexToHsv(value);
+      if (next) {
+        setHsv(next);
+      }
     }
-  }, [hsv, format]);
+  }
 
   const isChannelFormat = format === "rgb" || format === "hsl";
+  const displayText = isEditing ? inputText : formatColor(hsv, format);
 
-  const commit = useCallback(
-    (next: HSV) => {
-      setHsv(next);
-      onChange(hsvToHex(next));
-    },
-    [onChange],
-  );
+  const commit = (next: HSV) => {
+    setHsv(next);
+    onChange(hsvToHex(next));
+  };
 
   const handleInputChange = (text: string) => {
-    editingRef.current = true;
+    setIsEditing(true);
     setInputText(text);
     const parsed = parseColor(text, format);
     if (parsed) {
@@ -60,8 +55,7 @@ export function ColorPickerPanel({
   };
 
   const handleInputBlur = () => {
-    editingRef.current = false;
-    setInputText(formatColor(hsv, format));
+    setIsEditing(false);
     setInvalid(false);
   };
 
@@ -73,22 +67,26 @@ export function ColorPickerPanel({
         hue={hsv.h}
         saturation={hsv.s}
         value={hsv.v}
-        onChange={({ saturation, value }) =>
-          commit({ ...hsv, s: saturation, v: value })
+        onChange={({ saturation, value: v }) =>
+          commit({ ...hsv, s: saturation, v })
         }
       />
 
       <div className="flex items-center gap-3">
         <div
           aria-hidden
-          className="size-11 shrink-0 border-2 border-border boxShadowSmall"
+          className="border-border boxShadowSmall size-11 shrink-0 border-2"
           style={{ backgroundColor: currentHex }}
         />
         <div className="flex-1">
-          <label className="mb-1 block text-[0.65rem] font-bold tracking-widest text-muted uppercase">
+          <label
+            htmlFor="color-picker-hue"
+            className="text-muted mb-1 block text-[0.65rem] font-bold tracking-widest uppercase"
+          >
             Hue
           </label>
           <Slider
+            id="color-picker-hue"
             aria-label="Hue"
             min={0}
             max={360}
@@ -104,7 +102,7 @@ export function ColorPickerPanel({
       </div>
 
       <div className="flex items-stretch gap-2">
-        <div className="flex overflow-hidden border-2 border-border boxShadowSmall">
+        <div className="border-border boxShadowSmall flex overflow-hidden border-2">
           {FORMATS.map((f) => (
             <button
               key={f}
@@ -112,12 +110,12 @@ export function ColorPickerPanel({
               onClick={() => setFormat(f)}
               aria-pressed={format === f}
               className={cn(
-                "px-2 text-[0.7rem] font-bold tracking-wide transition-colors outline-none cursor-pointer",
-                "border-r-2 border-border last:border-r-0",
+                "cursor-pointer px-2 text-[0.7rem] font-bold tracking-wide transition-colors outline-none",
+                "border-border border-r-2 last:border-r-0",
                 "focus-visible:bg-accent focus-visible:text-text",
                 format === f
                   ? "bg-primary text-text"
-                  : "bg-card text-text hover:bg-muted",
+                  : "bg-card text-text hover:bg-muted"
               )}
             >
               {FORMAT_PREFIX[f]}
@@ -130,13 +128,14 @@ export function ColorPickerPanel({
           ) : (
             <Input
               aria-label={`${FORMAT_PREFIX[format]} value`}
-              value={inputText}
+              value={displayText}
               aria-invalid={invalid}
               spellCheck={false}
               autoComplete="off"
               onChange={(e) => handleInputChange(e.target.value)}
               onFocus={() => {
-                editingRef.current = true;
+                setIsEditing(true);
+                setInputText(formatColor(hsv, format));
               }}
               onBlur={handleInputBlur}
             />
@@ -145,4 +144,4 @@ export function ColorPickerPanel({
       </div>
     </div>
   );
-}
+};

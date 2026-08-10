@@ -1,63 +1,74 @@
 import { useEffect, useRef } from "react";
+
 import { useCanvasStore } from "@/stores/canvas.store";
 import type { CanvasTool } from "@/types/canvas";
 
-export function useCanvasKeyboard(
+export const useCanvasKeyboard = (
   onToolChange?: (tool: CanvasTool) => void,
   onCancelTool?: () => void,
-  tool?: CanvasTool,
-) {
+  tool?: CanvasTool
+) => {
   const onToolChangeRef = useRef(onToolChange);
   const onCancelToolRef = useRef(onCancelTool);
   const toolRef = useRef(tool);
 
-  onToolChangeRef.current = onToolChange;
-  onCancelToolRef.current = onCancelTool;
-
-  toolRef.current = tool;
-
-  const keyFunction = (e: KeyboardEvent, execute: () => void) => {
-    e.preventDefault();
-    execute();
-  };
+  useEffect(() => {
+    onToolChangeRef.current = onToolChange;
+    onCancelToolRef.current = onCancelTool;
+    toolRef.current = tool;
+  }, [onToolChange, onCancelTool, tool]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const store = useCanvasStore.getState();
 
       const target = e.target as HTMLElement;
-      const targetValues = "input, textarea, select, [contenteditable]";
-
-      if (target?.closest?.(targetValues)) return;
-
-      const keybindMap = {
-        Space: () => keyFunction(e, () => store.setIsSpacePressed(true)),
-        Alt: () => keyFunction(e, () => store.setIsAltPressed(true)),
-        Escape: () => {
-          if (toolRef.current === "eyedropper") {
-            keyFunction(e, () => onCancelToolRef.current?.());
-          }
-        },
-      } as Record<string, () => void>;
-
-      const keyMap = {
-        b: () => keyFunction(e, () => onToolChangeRef.current?.("draw")),
-        e: () => keyFunction(e, () => onToolChangeRef.current?.("eraser")),
-        i: () => keyFunction(e, () => onToolChangeRef.current?.("eyedropper")),
-      } as Record<string, () => void>;
+      if (target?.closest?.("input, textarea, select, [contenteditable]")) {
+        return;
+      }
 
       const key = e.key.toLowerCase();
-      const code = e.code.startsWith("Alt") ? "Alt" : e.code;
+      const code = e.code.startsWith("Alt") ? "alt" : e.code.toLowerCase();
 
-      if (key in keyMap) return keyMap[key]();
-      return keybindMap[code]?.();
+      if (key === "b") {
+        e.preventDefault();
+        onToolChangeRef.current?.("draw");
+        return;
+      }
+      if (key === "e") {
+        e.preventDefault();
+        onToolChangeRef.current?.("eraser");
+        return;
+      }
+      if (key === "i") {
+        e.preventDefault();
+        onToolChangeRef.current?.("eyedropper");
+        return;
+      }
+      if (code === "alt") {
+        e.preventDefault();
+        store.setIsAltPressed(true);
+        return;
+      }
+      if (code === "space") {
+        e.preventDefault();
+        store.setIsSpacePressed(true);
+        return;
+      }
+      if (code === "escape" && toolRef.current === "eyedropper") {
+        e.preventDefault();
+        onCancelToolRef.current?.();
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const store = useCanvasStore.getState();
 
-      if (e.code === "Space") store.setIsSpacePressed(false);
-      else if (e.key === "Alt") store.setIsAltPressed(false);
+      if (e.code === "Space") {
+        store.setIsSpacePressed(false);
+      } else if (e.key === "Alt") {
+        store.setIsAltPressed(false);
+      }
     };
 
     const handleBlur = () => {
@@ -77,4 +88,4 @@ export function useCanvasKeyboard(
       globalThis.removeEventListener("blur", handleBlur);
     };
   }, []);
-}
+};

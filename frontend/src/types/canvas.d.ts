@@ -1,5 +1,5 @@
-import type { RefObject } from "react";
 import type Konva from "konva";
+import type { RefObject } from "react";
 
 export interface Point {
   x: number;
@@ -7,6 +7,7 @@ export interface Point {
 }
 
 export interface DrawingLine {
+  id: number;
   points: Point[];
   color: string;
   brushSize: number;
@@ -45,7 +46,7 @@ export interface CanvasProps {
   className?: string;
   color: string;
   brushSize: number;
-  tool: Partial<CanvasTool>;
+  tool: CanvasTool;
   opacity?: number;
   brushSizeRange?: { min: number; max: number };
   onBrushSizeChange?: (size: number) => void;
@@ -53,7 +54,6 @@ export interface CanvasProps {
   onColorPick?: (color: string) => void;
   onToolChange?: (tool: CanvasTool) => void;
   onToolCancel?: () => void;
-  onMount?: (api: CanvasAPI) => void;
   zoom?: CanvasZoomConfig;
   limitToBounds?: boolean;
   panning?: CanvasPanningConfig;
@@ -102,7 +102,6 @@ export interface AltStart {
 }
 
 export interface CanvasTransform {
-  fitScale: number;
   effectiveScale: number;
   effectiveX: number;
   effectiveY: number;

@@ -1,61 +1,88 @@
-import { Button } from "@/components/ui/button.component";
-import { Input } from "@/components/ui/input.component";
-import { useAuthStore } from "@/stores/auth.store";
-import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-export function LoginAuth({
+import RevealableError from "@/components/shared/reveal.component";
+import { Button } from "@/components/ui/button.component";
+import { Input } from "@/components/ui/input.component";
+import { useLogin } from "@/hooks/user/auth.hook";
+import { loginSchema } from "@/lib/zod.utils";
+
+export const LoginAuth = ({
   setTab,
 }: {
   setTab: (value: "login" | "register") => void;
-}) {
-  const login = useAuthStore((s) => s.login);
-  const navigate = useNavigate();
+}) => {
+  const login = useLogin();
 
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const [loading, setLoading] = useState<boolean>(false);
+  const loading = login.isPending;
 
   const handleLogin = () => {
-    setLoading(true);
+    setValidationError(null);
+    const result = loginSchema.safeParse({ password, username });
+    if (!result.success) {
+      setValidationError(
+        result.error.issues[0]?.message ?? "Проверьте введённые данные"
+      );
+      return;
+    }
+    login.mutate({ password, username });
   };
 
+  let errorContent: React.ReactNode = null;
+  if (validationError) {
+    errorContent = (
+      <span className="text-error text-xs">{validationError}</span>
+    );
+  } else if (login.error) {
+    errorContent = <RevealableError error={login.error} />;
+  }
+
   return (
-    <main
-      className="flex flex-col gap-2 items-center w-full"
-      onKeyDown={(e) => {
-        if (e.code === "Enter") return handleLogin();
+    <form
+      className="flex w-full flex-col items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleLogin();
       }}
     >
-      <div className="flex flex-col leading-tight w-full">
-        <label className="text-muted text-xs">Имя пользователя</label>
+      <div className="flex w-full flex-col leading-tight">
+        <label htmlFor="login-username" className="text-muted text-xs">
+          Имя пользователя
+        </label>
         <Input
+          id="login-username"
           type="text"
           min={4}
           max={24}
           amount
           value={username}
-          onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
+          onChange={(e) => setUsername(e.target.value.replaceAll(/\s+/gu, ""))}
           autoFocus
         />
       </div>
-      <div className="flex flex-col leading-tight w-full">
-        <label className="text-muted text-xs">Пароль</label>
+      <div className="flex w-full flex-col leading-tight">
+        <label htmlFor="login-password" className="text-muted text-xs">
+          Пароль
+        </label>
         <Input
+          id="login-password"
           type="password"
           min={4}
           max={24}
           value={password}
-          onChange={(e) => setPassword(e.target.value.replace(/\s+/g, ""))}
+          onChange={(e) => setPassword(e.target.value.replaceAll(/\s+/gu, ""))}
         />
       </div>
-      <Button onClick={handleLogin} className="w-full" loading={loading}>
+      <Button type="submit" className="w-full" loading={loading}>
         Войти
       </Button>
+      {errorContent}
 
-      <div className="flex flex-row gap-1 items-center leading-tight">
-        <span className="text-xs text-muted">Ещё нет аккаунта?</span>
+      <div className="flex flex-row items-center gap-1 leading-tight">
+        <span className="text-muted text-xs">Ещё нет аккаунта?</span>
         <Button
           variant="link"
           className="w-16 text-xs"
@@ -64,6 +91,6 @@ export function LoginAuth({
           Создать
         </Button>
       </div>
-    </main>
+    </form>
   );
-}
+};

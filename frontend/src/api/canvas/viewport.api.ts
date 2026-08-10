@@ -1,4 +1,5 @@
 import type Konva from "konva";
+
 import { clampOffset } from "@/lib/canvas.utils";
 import { useCanvasStore } from "@/stores/canvas.store";
 import type {
@@ -7,6 +8,8 @@ import type {
   PanStart,
   Point,
 } from "@/types/canvas";
+
+const getStore = () => useCanvasStore.getState();
 
 export class CanvasViewport {
   private props!: CanvasInteractionProps;
@@ -18,75 +21,83 @@ export class CanvasViewport {
     this.transform = transform;
   }
 
-  private get store() {
-    return useCanvasStore.getState();
-  }
-
   resetView = (): void => {
     const { zoomConfig } = this.props;
     const clampedZoom = Math.max(
       zoomConfig.zoomMin,
-      Math.min(zoomConfig.zoomMax, zoomConfig.initialZoom),
+      Math.min(zoomConfig.zoomMax, zoomConfig.initialZoom)
     );
-    this.store.resetView(clampedZoom);
+    getStore().resetView(clampedZoom);
   };
 
   reset(): void {
     this.panStart = null;
-    this.store.setIsPanning(false);
+    getStore().setIsPanning(false);
   }
 
   wheel(e: Konva.KonvaEventObject<WheelEvent>): void {
     e.evt.preventDefault();
     const stage = e.target.getStage();
-    if (!stage) return;
+    if (!stage) {
+      return;
+    }
 
     stage.setPointersPositions(e.evt);
     const pointer = stage.getPointerPosition();
-    if (!pointer) return;
+    if (!pointer) {
+      return;
+    }
 
     const zoom = this.computeZoom(e.evt.deltaY > 0 ? -1 : 1);
-    this.store.setZoomLevel(zoom.zoom);
-    this.store.setPanOffset(this.computePanOffset(pointer, zoom));
+    getStore().setZoomLevel(zoom.zoom);
+    getStore().setPanOffset(this.computePanOffset(pointer, zoom));
   }
 
   startPan(e: Konva.KonvaEventObject<MouseEvent>): boolean {
     const stage = e.target.getStage();
-    if (!stage) return false;
+    if (!stage) {
+      return false;
+    }
 
     const pn = this.props.panning ?? {
       allowLeftClickPan: false,
       allowMiddleClickPan: false,
       allowRightClickPan: true,
     };
-    const button = e.evt.button;
-    const store = this.store;
+    const { button } = e.evt;
+    const store = getStore();
 
+    const panButtons: Record<number, boolean | undefined> = {
+      0: pn.allowLeftClickPan,
+      1: pn.allowMiddleClickPan,
+      2: pn.allowRightClickPan,
+    };
     const panButton =
-      (button === 0 && pn.allowLeftClickPan) ||
-      (button === 1 && pn.allowMiddleClickPan) ||
-      (button === 2 && pn.allowRightClickPan) ||
-      (store.isSpacePressed && button === 0);
+      panButtons[button] || (store.isSpacePressed && button === 0);
 
-    if (!panButton) return false;
+    if (!panButton) {
+      return false;
+    }
 
     e.evt.preventDefault();
     store.setIsPanning(true);
     const pos = stage.getPointerPosition();
     if (pos) {
       this.panStart = {
-        pointerX: pos.x,
-        pointerY: pos.y,
         offsetX: store.panOffset.x,
         offsetY: store.panOffset.y,
+        pointerX: pos.x,
+        pointerY: pos.y,
       };
     }
     return true;
   }
 
   movePan(e: Konva.KonvaEventObject<MouseEvent>): boolean {
-    const store = this.store;
-    if (!store.isPanning) return false;
+    const store = getStore();
+    if (!store.isPanning) {
+      return false;
+    }
 
     const pos = e.target.getStage()?.getPointerPosition();
     const start = this.panStart;
@@ -100,8 +111,8 @@ export class CanvasViewport {
           this.props.dimensions,
           this.transform.centerScale,
           this.transform.effectiveScale,
-          this.props.limitToBounds,
-        ),
+          this.props.limitToBounds
+        )
       );
     }
     return true;
@@ -113,22 +124,20 @@ export class CanvasViewport {
     center: number;
   } {
     const { zoomConfig, centerOnInit } = this.props;
-    const { fitScale } = this.transform;
     const zoom = Math.max(
       zoomConfig.zoomMin,
       Math.min(
         zoomConfig.zoomMax,
-        this.store.zoomLevel *
-          (direction > 0 ? zoomConfig.zoomStep : 1 / zoomConfig.zoomStep),
-      ),
+        getStore().zoomLevel *
+          (direction > 0 ? zoomConfig.zoomStep : 1 / zoomConfig.zoomStep)
+      )
     );
-    const scale = fitScale * zoom;
-    return { zoom, scale, center: centerOnInit ? scale : fitScale };
+    return { center: centerOnInit ? zoom : 1, scale: zoom, zoom };
   }
 
   private computePanOffset(
     pointer: Point,
-    zoom: { scale: number; center: number },
+    zoom: { scale: number; center: number }
   ): Point {
     const { effectiveScale, effectiveX, effectiveY } = this.transform;
     const canvasX = (pointer.x - effectiveX) / effectiveScale;
@@ -151,7 +160,7 @@ export class CanvasViewport {
       this.props.dimensions,
       zoom.center,
       zoom.scale,
-      this.props.limitToBounds,
+      this.props.limitToBounds
     );
   }
 }

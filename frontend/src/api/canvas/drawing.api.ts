@@ -2,27 +2,25 @@ import { clipPointsToCanvas, isPointInCanvas } from "@/lib/canvas.utils";
 import { useCanvasStore } from "@/stores/canvas.store";
 import type { CanvasInteractionProps, Point } from "@/types/canvas";
 
+const getStore = () => useCanvasStore.getState();
+
 export class CanvasDrawing {
   private props!: CanvasInteractionProps;
-  private wasOutside: boolean = false;
+  private wasOutside = false;
 
   setContext(props: CanvasInteractionProps): void {
     this.props = props;
   }
 
-  private get store() {
-    return useCanvasStore.getState();
-  }
-
   start(canvasPos: Point): void {
-    this.store.setIsDrawing(true);
-    this.store.setCurrentPoints(
-      clipPointsToCanvas([canvasPos], this.props.dimensions),
+    getStore().setIsDrawing(true);
+    getStore().setCurrentPoints(
+      clipPointsToCanvas([canvasPos], this.props.dimensions)
     );
   }
 
   move(canvasPos: Point): void {
-    const store = this.store;
+    const store = getStore();
     const margin = this.props.brushSize + 5;
 
     if (!isPointInCanvas(canvasPos, this.props.dimensions, margin)) {
@@ -39,7 +37,7 @@ export class CanvasDrawing {
     if (this.wasOutside) {
       this.wasOutside = false;
       store.setCurrentPoints(
-        clipPointsToCanvas([canvasPos], this.props.dimensions),
+        clipPointsToCanvas([canvasPos], this.props.dimensions)
       );
       return;
     }
@@ -54,8 +52,10 @@ export class CanvasDrawing {
   }
 
   end(): void {
-    const store = this.store;
-    if (!store.isDrawing) return;
+    const store = getStore();
+    if (!store.isDrawing) {
+      return;
+    }
     store.setIsDrawing(false);
     this.wasOutside = false;
 
@@ -68,18 +68,18 @@ export class CanvasDrawing {
   }
 
   saveStroke(): void {
-    this.store.saveStroke(
+    getStore().saveStroke(
       this.props.tool,
       this.props.color,
       this.props.brushSize,
-      this.props.opacity,
+      this.props.opacity
     );
   }
 
   reset(): void {
-    this.store.setIsDrawing(false);
-    this.store.setCurrentPoints([]);
-    this.store.setMousePos(null);
+    getStore().setIsDrawing(false);
+    getStore().setCurrentPoints([]);
+    getStore().setMousePos(null);
     this.wasOutside = false;
   }
 }

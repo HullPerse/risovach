@@ -4,6 +4,7 @@ import {
   markApplied,
   migrations,
 } from "@/lib/migration.utils";
+
 import { rawDb } from "./index.db";
 
 const logger = new Logger("MIGRATIONS");
@@ -24,8 +25,8 @@ export default function migrate() {
     for (const stmt of sql) {
       try {
         rawDb.run(stmt);
-      } catch (e: unknown) {
-        const error = e instanceof Error ? e.message : String(e);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
 
         const ignorablePatterns = [
           "duplicate column",
@@ -33,24 +34,21 @@ export default function migrate() {
           "no such column",
         ];
 
-        if (ignorablePatterns.some((pattern) => error.includes(pattern))) {
-          logger.debug(`  ↳ Skipped: ${error}`);
+        if (ignorablePatterns.some((pattern) => message.includes(pattern))) {
+          logger.debug(`Skipped: ${message}`);
           continue;
         }
 
-        logger.error(`  ✗ Failed: ${error}`);
-        throw e;
+        logger.error(`Failed: ${message}`);
+        throw error;
       }
     }
 
     markApplied(hash);
-    logger.info(`${hash} completed`);
+    logger.success(`${hash} completed`);
   }
 
   logger.info("All migrations applied successfully!");
 }
 
-//direct executing of migrate
-if (import.meta.main) {
-  migrate();
-}
+if (import.meta.main) migrate();

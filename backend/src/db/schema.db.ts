@@ -1,4 +1,4 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   created: text("created").notNull(),
@@ -6,9 +6,14 @@ const timestamps = {
 };
 
 export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  avatar: blob("avatar", { mode: "buffer" }),
+  avatarThumb: blob("avatar_thumb", { mode: "buffer" }),
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  location: text("location", { mode: "json" }).$type<{
+    country: string | null;
+    city: string | null;
+  } | null>(),
   passwordHash: text("password_hash").notNull(),
-  avatar: text("avatar").notNull().default(""),
+  username: text("username").notNull().unique(),
   ...timestamps,
 });

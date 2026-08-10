@@ -1,9 +1,9 @@
-﻿import { Slider as SliderPrimitive } from "@base-ui/react/slider";
-
-import { cn } from "@/lib/index.utils";
+import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 import type { CSSProperties } from "react";
 
-function Slider({
+import { cn } from "@/lib/index.utils";
+
+export const Slider = ({
   className,
   defaultValue,
   value,
@@ -17,12 +17,12 @@ function Slider({
 }: SliderPrimitive.Root.Props & {
   trackStyle?: CSSProperties;
   showIndicator?: boolean;
-}) {
-  const _values = Array.isArray(value)
-    ? value
-    : Array.isArray(defaultValue)
-      ? defaultValue
-      : [min, max];
+}) => {
+  let values: number[];
+
+  if (Array.isArray(value)) values = value;
+  else if (Array.isArray(defaultValue)) values = defaultValue;
+  else values = [min, max];
 
   return (
     <SliderPrimitive.Root
@@ -38,31 +38,29 @@ function Slider({
       <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden border-2 bg-background select-none data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-3 min-h-2"
+          className="bg-background relative min-h-2 grow overflow-hidden border-2 select-none data-horizontal:h-3 data-horizontal:w-full data-vertical:h-full data-vertical:w-3"
           style={{
             ...trackStyle,
             minHeight: showIndicator ? "2px" : undefined,
           }}
         >
-          {showIndicator !== false ? (
+          {showIndicator === false ? null : (
             <SliderPrimitive.Indicator
               data-slot="slider-range"
               className="bg-primary select-none data-horizontal:h-full data-vertical:w-full"
             />
-          ) : null}
+          )}
         </SliderPrimitive.Track>
-        {Array.from({ length: _values.length }, (_, index) => (
+        {Array.from({ length: values.length }, (_, index) => (
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledby}
-            className="relative block size-4.5 shrink-0 border-2 bg-background transition-[color,box-shadow] select-none after:absolute after:-inset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50"
+            className="bg-background focus-visible:outline-primary relative block size-4.5 shrink-0 border-2 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}
       </SliderPrimitive.Control>
     </SliderPrimitive.Root>
   );
-}
-
-export { Slider };
+};

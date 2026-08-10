@@ -1,7 +1,8 @@
+import type Konva from "konva";
+import type { Ref } from "react";
+import { useRef, useLayoutEffect, useState, useImperativeHandle } from "react";
 import { Stage, Layer, Line, Rect, Circle } from "react-konva";
-import Konva from "konva";
-import { useRef, useEffect, useCallback } from "react";
-import { cn } from "@/lib/index.utils";
+
 import {
   MIN_ZOOM,
   MAX_ZOOM,
@@ -12,20 +13,72 @@ import {
   DEFAULT_BRUSH_SIZE_RANGE,
   DEFAULT_BRUSH_OPACITY,
 } from "@/config/canvas.config";
-import type { CanvasProps, RequestImageOptions } from "@/types/canvas";
+import { useCanvasAPI } from "@/hooks/canvas/api.hook";
+import { useCanvasInteraction } from "@/hooks/canvas/interaction.hook";
+import { useCanvasKeyboard } from "@/hooks/canvas/keyboard.hook";
+import { requestImage } from "@/lib/canvas.utils";
+import { cn } from "@/lib/index.utils";
 import { useCanvasStore } from "@/stores/canvas.store";
+import type {
+  CanvasAPI,
+  CanvasProps,
+  CanvasTool,
+  DrawingLine,
+} from "@/types/canvas";
 
 import CanvasMagnifier from "./components/magnifier.canvas";
-import { useCanvasKeyboard } from "@/hooks/canvas/keyboard.hook";
-import { useCanvasInteraction } from "@/hooks/canvas/interaction.hook";
-import { useCanvasAPI } from "@/hooks/canvas/api.hook";
 
-export function CanvasComponent({
+const StrokeLine = ({ line }: { line: DrawingLine }) => {
+  const isEraser = line.tool === "eraser";
+  return (
+    <Line
+      points={line.points.flatMap((p) => [p.x, p.y])}
+      stroke={isEraser ? "white" : line.color}
+      strokeWidth={line.brushSize}
+      tension={0.5}
+      lineCap="round"
+      lineJoin="round"
+      perfectDrawEnabled={false}
+      listening={false}
+      opacity={isEraser ? 1 : line.opacity}
+      globalCompositeOperation={isEraser ? "destination-out" : "source-over"}
+    />
+  );
+};
+
+const CurrentStroke = ({
+  points,
+  tool,
+  color,
+  brushSize,
+  opacity,
+}: {
+  points: number[];
+  tool: CanvasTool;
+  color: string;
+  brushSize: number;
+  opacity: number;
+}) => {
+  const isEraser = tool === "eraser";
+  return (
+    <Line
+      points={points}
+      stroke={isEraser ? "white" : color}
+      strokeWidth={brushSize}
+      tension={0.5}
+      lineCap="round"
+      lineJoin="round"
+      opacity={isEraser ? 1 : opacity}
+      globalCompositeOperation={isEraser ? "destination-out" : "source-over"}
+    />
+  );
+};
+
+export const CanvasComponent = ({
   className,
   color,
   brushSize,
   tool,
-  onMount,
   zoom,
   limitToBounds = DEFAULT_LIMIT_TO_BOUNDS,
   panning = DEFAULT_PANNING,
@@ -38,23 +91,25 @@ export function CanvasComponent({
   onToolChange,
   onToolCancel,
   dimensions,
-}: CanvasProps) {
+  ref,
+}: CanvasProps & { ref?: Ref<CanvasAPI | null> }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const drawingLayerRef = useRef<Konva.Layer>(null);
+  const [drawingCanvas, setDrawingCanvas] = useState<HTMLCanvasElement | null>(
+    null
+  );
 
   const initialZoom = zoom?.initialZoom ?? DEFAULT_INITIAL_ZOOM;
   const zoomStep = zoom?.step ?? DEFAULT_ZOOM_STEP;
   const zoomMin = zoom?.min ?? MIN_ZOOM;
   const zoomMax = zoom?.max ?? MAX_ZOOM;
 
-  const initializedRef = useRef(false);
-  if (!initializedRef.current) {
-    initializedRef.current = true;
+  useLayoutEffect(() => {
     const store = useCanvasStore.getState();
     store.setZoomLevel(Math.max(zoomMin, Math.min(zoomMax, initialZoom)));
     store.setPanOffset({ x: 0, y: 0 });
-  }
+  }, [initialZoom, zoomMax, zoomMin]);
 
   useCanvasKeyboard(onToolChange, onToolCancel, tool);
 
@@ -74,86 +129,38 @@ export function CanvasComponent({
     hoveredColor,
     circleFill,
   } = useCanvasInteraction({
-    dimensions,
-    color,
     brushSize,
-    tool,
-    opacity,
     brushSizeRange,
-    onBrushSizeChange,
-    onOpacityChange,
-    onColorPick,
-    onToolChange,
-    onToolCancel,
-    limitToBounds,
-    panning,
     centerOnInit,
-    zoomConfig: { initialZoom, zoomStep, zoomMin, zoomMax },
+    color,
+    dimensions,
     drawingLayerRef,
+    limitToBounds,
+    onBrushSizeChange,
+    onColorPick,
+    onOpacityChange,
+    onToolCancel,
+    onToolChange,
+    opacity,
+    panning,
+    tool,
+    zoomConfig: { initialZoom, zoomMax, zoomMin, zoomStep },
   });
 
-  const requestImage = useCallback(
-    async (options?: RequestImageOptions): Promise<File | null> => {
-      const layer = drawingLayerRef.current;
-      const stage = stageRef.current;
-      if (!layer || !stage) return null;
-
-      const prevScaleX = stage.scaleX();
-      const prevScaleY = stage.scaleY();
-      const prevX = stage.x();
-      const prevY = stage.y();
-
-      stage.scaleX(1);
-      stage.scaleY(1);
-      stage.x(0);
-      stage.y(0);
-      stage.draw();
-
-      const canvas = layer.toCanvas({
-        x: 0,
-        y: 0,
-        width: dimensions.width,
-        height: dimensions.height,
-        pixelRatio: 1,
-      });
-
-      stage.scaleX(prevScaleX);
-      stage.scaleY(prevScaleY);
-      stage.x(prevX);
-      stage.y(prevY);
-      stage.draw();
-
-      const output = document.createElement("canvas");
-      output.width = dimensions.width;
-      output.height = dimensions.height;
-      const ctx = output.getContext("2d");
-      if (!ctx) return null;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, dimensions.width, dimensions.height);
-      ctx.drawImage(canvas, 0, 0);
-
-      const blob = await new Promise<Blob | null>((resolve) =>
-        output.toBlob(resolve, "image/png"),
-      );
-      if (!blob) return null;
-
-      const filename = options?.filename ?? `canvas-${Date.now()}.png`;
-      return new File([blob], filename, { type: "image/png" });
-    },
-    [dimensions],
+  const canvasApi = useCanvasAPI(resetView, (options) =>
+    requestImage(stageRef, drawingLayerRef, dimensions, {
+      filename: "canvas.png",
+      ...options,
+    })
   );
 
-  const canvasApi = useCanvasAPI(resetView, requestImage);
-
-  useEffect(() => {
-    onMount?.(canvasApi);
-  }, [canvasApi, onMount]);
+  useImperativeHandle(ref, () => canvasApi);
 
   return (
     <div
       ref={containerRef}
       onContextMenu={(e) => e.preventDefault()}
-      className={cn("border-2 border-border overflow-hidden", className)}
+      className={cn("border-border overflow-hidden border-2", className)}
       style={{ cursor: isAltPressed ? "crosshair" : "none" }}
     >
       <Stage
@@ -189,42 +196,26 @@ export function CanvasComponent({
         </Layer>
 
         <Layer
-          ref={drawingLayerRef}
+          ref={(node) => {
+            drawingLayerRef.current = node;
+            setDrawingCanvas(node?.getCanvas()._canvas ?? null);
+          }}
           clipX={0}
           clipY={0}
           clipWidth={dimensions.width}
           clipHeight={dimensions.height}
         >
-          {lines.map((line, i) => (
-            <Line
-              key={i}
-              points={line.points.flatMap((p) => [p.x, p.y])}
-              stroke={line.tool === "eraser" ? "white" : line.color}
-              strokeWidth={line.brushSize}
-              tension={0.5}
-              lineCap="round"
-              lineJoin="round"
-              perfectDrawEnabled={false}
-              listening={false}
-              opacity={line.tool === "eraser" ? 1 : line.opacity}
-              globalCompositeOperation={
-                line.tool === "eraser" ? "destination-out" : "source-over"
-              }
-            />
+          {lines.map((line) => (
+            <StrokeLine key={line.id} line={line} />
           ))}
 
           {currentPoints.length > 1 && (
-            <Line
+            <CurrentStroke
               points={currentPoints.flatMap((p) => [p.x, p.y])}
-              stroke={tool === "eraser" ? "white" : color}
-              strokeWidth={brushSize}
-              tension={0.5}
-              lineCap="round"
-              lineJoin="round"
-              opacity={tool === "eraser" ? 1 : opacity}
-              globalCompositeOperation={
-                tool === "eraser" ? "destination-out" : "source-over"
-              }
+              tool={tool}
+              color={color}
+              brushSize={brushSize}
+              opacity={opacity}
             />
           )}
         </Layer>
@@ -234,7 +225,7 @@ export function CanvasComponent({
             tool={tool}
             mousePos={mousePos}
             hoveredColor={hoveredColor}
-            drawingLayerRef={drawingLayerRef}
+            drawingCanvas={drawingCanvas}
             effectiveScale={effectiveScale}
             effectiveDimensions={{
               x: effectiveX,
@@ -257,4 +248,4 @@ export function CanvasComponent({
       </Stage>
     </div>
   );
-}
+};

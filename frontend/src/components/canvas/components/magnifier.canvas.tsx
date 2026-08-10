@@ -1,59 +1,61 @@
-import { MAG_CELL, MAG_SIZE, MAG_SOURCE } from "@/config/canvas.config";
-import type { CanvasTool, Point } from "@/types/canvas";
-import type { Layer } from "konva/lib/Layer";
-import type { RefObject } from "react";
 import { Line, Rect, Group, Image } from "react-konva";
 
-function CanvasMagnifier({
+import { MAG_CELL, MAG_SIZE, MAG_SOURCE } from "@/config/canvas.config";
+import type { CanvasTool, Point } from "@/types/canvas";
+
+const CanvasMagnifier = ({
   tool,
   mousePos,
   hoveredColor,
-  drawingLayerRef,
+  drawingCanvas,
   effectiveScale,
   effectiveDimensions,
 }: {
   tool: CanvasTool;
   mousePos: Point | null;
   hoveredColor: string | null;
-  drawingLayerRef: RefObject<Layer | null>;
+  drawingCanvas: HTMLCanvasElement | null;
   effectiveScale: number;
   effectiveDimensions: {
     x: number;
     y: number;
   };
-}) {
+}) => {
   const magnifier = (() => {
-    if (tool !== "eyedropper" || !mousePos || !hoveredColor) return null;
-    const layer = drawingLayerRef.current;
-    const imageEl = layer?.getCanvas()._canvas;
-    if (!imageEl) return null;
+    if (tool !== "eyedropper" || !mousePos || !hoveredColor) {
+      return null;
+    }
+    if (!drawingCanvas) {
+      return null;
+    }
 
     const sx = mousePos.x * effectiveScale + effectiveDimensions.x;
     const sy = mousePos.y * effectiveScale + effectiveDimensions.y;
 
     const grid: number[] = [];
-    for (let i = 1; i < MAG_SOURCE; i++) {
+    for (let i = 1; i < MAG_SOURCE; i += 1) {
       const p = i * MAG_CELL;
-      grid.push(p, 0, p, MAG_SIZE);
-      grid.push(0, p, MAG_SIZE, p);
+      grid.push(p, 0, p, MAG_SIZE, 0, p, MAG_SIZE, p);
     }
 
     return {
-      imageEl,
-      x: (sx - effectiveDimensions.x) / effectiveScale,
-      y: (sy - effectiveDimensions.y) / effectiveScale,
       crop: {
+        height: MAG_SOURCE,
+        width: MAG_SOURCE,
         x: Math.round(sx) - Math.floor(MAG_SOURCE / 2),
         y: Math.round(sy) - Math.floor(MAG_SOURCE / 2),
-        width: MAG_SOURCE,
-        height: MAG_SOURCE,
       },
-      hex: hoveredColor,
       grid,
+      hex: hoveredColor,
+      imageEl: drawingCanvas,
+      x: (sx - effectiveDimensions.x) / effectiveScale,
+      y: (sy - effectiveDimensions.y) / effectiveScale,
     };
   })();
 
-  if (!magnifier) return;
+  if (!magnifier) {
+    return;
+  }
 
   return (
     <Group
@@ -124,6 +126,6 @@ function CanvasMagnifier({
       />
     </Group>
   );
-}
+};
 
 export default CanvasMagnifier;

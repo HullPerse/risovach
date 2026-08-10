@@ -1,3 +1,4 @@
+// oxlint-disable react/only-export-components, github/filenames-match-regex
 import {
   createRootRoute,
   createRoute,
@@ -6,50 +7,52 @@ import {
 } from "@tanstack/react-router";
 import { lazy } from "react";
 
-import { BigLoader } from "@/components/shared/loader.component";
-import { BigError } from "@/components/shared/error.component";
+import { bigError, bigLoader } from "@/components/shared/error.component";
+import { initializeUserStore, useUserStore } from "@/stores/user.store";
+
 import AuthPage from "./auth.route";
 import Menu from "./menu.route";
-import { useAuthStore } from "@/stores/auth.store";
 
-const App = lazy(() => import("@/App"));
+const requireAuth = () => async () => {
+  await initializeUserStore();
+
+  if (useUserStore.getState().user) {
+    return;
+  }
+  throw redirect({ replace: true, to: "/auth" });
+};
+
+const App = lazy(() => import("@/app"));
 
 const rootRoute = createRootRoute({
   component: App,
 });
 
 const indexRoute = createRoute({
+  beforeLoad: requireAuth(),
+  component: App,
   getParentRoute: () => rootRoute,
   path: "/",
-  component: App,
-  pendingComponent: BigLoader,
-  beforeLoad: ({ matches }) => {
-    const isAuth = useAuthStore.getState().isAuthenticated;
-
-    for (const match of matches) {
-      if (match.routeId !== "/auth" && !isAuth) {
-        throw redirect({ to: "/auth", replace: true });
-      }
-    }
-  },
+  pendingComponent: bigLoader,
 });
 
 const errorRoute = createRoute({
+  component: bigError,
   getParentRoute: () => rootRoute,
   path: "/error",
-  component: () => <BigError />,
 });
 
 const authRoute = createRoute({
+  component: AuthPage,
   getParentRoute: () => rootRoute,
   path: "/auth",
-  component: AuthPage,
 });
 const menuRoute = createRoute({
+  beforeLoad: requireAuth(),
+  component: Menu,
   getParentRoute: () => rootRoute,
   path: "/menu",
-  component: () => Menu,
-  pendingComponent: BigLoader,
+  pendingComponent: bigLoader,
 });
 
 const routeTree = rootRoute.addChildren([

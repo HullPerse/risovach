@@ -1,4 +1,5 @@
 import type Konva from "konva";
+
 import { hexFromPixelComposite } from "@/lib/canvas.utils";
 import type {
   CanvasInteractionProps,
@@ -17,13 +18,15 @@ export class CanvasEyedropper {
 
   samplePixelData(canvasPos: Point): Uint8ClampedArray | null {
     const layer = this.props.drawingLayerRef.current;
-    if (!layer) return null;
+    if (!layer) {
+      return null;
+    }
     const canvas = layer.getCanvas();
     const screenX = Math.round(
-      canvasPos.x * this.transform.effectiveScale + this.transform.effectiveX,
+      canvasPos.x * this.transform.effectiveScale + this.transform.effectiveX
     );
     const screenY = Math.round(
-      canvasPos.y * this.transform.effectiveScale + this.transform.effectiveY,
+      canvasPos.y * this.transform.effectiveScale + this.transform.effectiveY
     );
     if (
       screenX < 0 ||
@@ -46,11 +49,8 @@ export class CanvasEyedropper {
   }
 
   cancel(e: Konva.KonvaEventObject<MouseEvent>): boolean {
-    const button = e.evt.button;
-    if (
-      this.props.tool !== "eyedropper" ||
-      (button !== 1 && button !== 2)
-    ) {
+    const { button } = e.evt;
+    if (this.props.tool !== "eyedropper" || (button !== 1 && button !== 2)) {
       return false;
     }
     e.evt.preventDefault();
@@ -59,7 +59,9 @@ export class CanvasEyedropper {
   }
 
   pick(canvasPos: Point): boolean {
-    if (this.props.tool !== "eyedropper") return false;
+    if (this.props.tool !== "eyedropper") {
+      return false;
+    }
     const hex = this.samplePixelHex(canvasPos);
     if (hex) {
       this.props.onColorPick?.(hex);

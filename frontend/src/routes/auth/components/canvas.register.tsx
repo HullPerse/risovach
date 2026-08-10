@@ -1,8 +1,3 @@
-import { Button } from "@/components/ui/button.component";
-import { Slider } from "@/components/ui/slider.component";
-import { CanvasComponent } from "@/components/canvas/index.canvas";
-import { cn } from "@/lib/index.utils";
-import { useRef, useState, useCallback } from "react";
 import {
   Pencil,
   Eraser,
@@ -11,88 +6,102 @@ import {
   Redo2,
   RefreshCcw,
 } from "lucide-react";
-import type { CanvasAPI, CanvasTool } from "@/types/canvas";
-import { PALETTE_COLORS } from "@/config/canvas.config";
-import { ColorPicker } from "@/components/picker/index.picker";
-import { useCanvasStore } from "@/stores/canvas.store";
+import { useRef, useState } from "react";
 
-function CanvasRegister({
+import { CanvasComponent } from "@/components/canvas/index.canvas";
+import { ColorPicker } from "@/components/picker/index.picker";
+import { Button } from "@/components/ui/button.component";
+import { Slider } from "@/components/ui/slider.component";
+import { PALETTE_COLORS } from "@/config/canvas.config";
+import { cn } from "@/lib/index.utils";
+import { useCanvasStore } from "@/stores/canvas.store";
+import type { CanvasAPI, CanvasTool } from "@/types/canvas";
+
+const TOOL_BUTTON_CLASSES = "noShadow size-8";
+const SELECTED_TOOL_CLASSES = "bg-primary border-border";
+const UNSELECTED_TOOL_CLASSES =
+  "border-border/30 hover:bg-primary/30 hover:border-border/60 bg-transparent";
+
+const CanvasRegister = ({
   setCurrentTab,
   onCreate,
 }: {
   setCurrentTab: (value: "data" | "canvas" | "preview") => void;
   onCreate: (file: File | null) => void;
-}) {
+}) => {
   const canvasApiRef = useRef<CanvasAPI | null>(null);
   const lines = useCanvasStore((s) => s.lines);
   const [selectedTool, setSelectedTool] = useState<CanvasTool>("draw");
   const [selectedColor, setSelectedColor] = useState("#000000");
   const [selectedSize, setSelectedSize] = useState(8);
   const [selectedOpacity, setSelectedOpacity] = useState(1);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const prevToolRef = useRef<CanvasTool>("draw");
 
-  const handleMount = useCallback((api: CanvasAPI) => {
-    canvasApiRef.current = api;
-  }, []);
+  const handleToolChange = (tool: CanvasTool) => {
+    if (tool === "eyedropper") {
+      prevToolRef.current = selectedTool;
+    }
+    setSelectedTool(tool);
+  };
 
-  const handleToolChange = useCallback(
-    (tool: CanvasTool) => {
-      if (tool === "eyedropper") {
-        prevToolRef.current = selectedTool;
-      }
-      setSelectedTool(tool);
-    },
-    [selectedTool],
-  );
-
-  const handleToolCancelEyedropper = useCallback(() => {
+  const handleToolCancelEyedropper = () => {
     setSelectedTool(prevToolRef.current);
-  }, []);
+  };
 
-  const handleUndo = useCallback(() => {
+  const handleUndo = () => {
     canvasApiRef.current?.undo();
-  }, []);
+  };
 
-  const handleRedo = useCallback(() => {
+  const handleRedo = () => {
     canvasApiRef.current?.redo();
-  }, []);
+  };
 
-  const handleClear = useCallback(() => {
-    if (confirm("Вы уверены?")) return canvasApiRef.current?.clear();
-  }, []);
+  const handleClear = () => {
+    canvasApiRef.current?.clear();
+    setShowClearConfirm(false);
+  };
 
-  const handleColorChange = useCallback((color: string) => {
-    if (!color.startsWith("#") || color.length > 7) return;
+  const handleColorChange = (color: string) => {
+    if (!color.startsWith("#") || color.length > 7) {
+      return;
+    }
     setSelectedColor(color);
-  }, []);
+  };
 
-  const handleSizeChange = useCallback((size: number) => {
+  const handleSizeChange = (size: number) => {
     setSelectedSize(size);
-  }, []);
+  };
 
-  const handleOpacityChange = useCallback((opacity: number) => {
+  const handleOpacityChange = (opacity: number) => {
     setSelectedOpacity(opacity);
-  }, []);
+  };
 
-  const handleColorPick = useCallback((color: string) => {
+  const handleColorPick = (color: string) => {
     setSelectedColor(color);
-  }, []);
+  };
 
-  const handleCreate = useCallback(async () => {
-    const file = await canvasApiRef.current?.requestImage();
-    onCreate(file ?? null);
-  }, [onCreate]);
+  const handleCreate = async () => {
+    setIsCreating(true);
+    try {
+      const file = await canvasApiRef.current?.requestImage();
+      onCreate(file ?? null);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
-    <main className="flex flex-col gap-4 w-full items-center">
+    <main className="flex w-full flex-col items-center gap-4">
       <CanvasComponent
-        dimensions={{ width: 420, height: 420 }}
+        dimensions={{ height: 420, width: 420 }}
         color={selectedColor}
         brushSize={selectedSize}
         opacity={selectedOpacity}
         tool={selectedTool}
-        onMount={handleMount}
-        brushSizeRange={{ min: 1, max: 100 }}
+        ref={canvasApiRef}
+        brushSizeRange={{ max: 100, min: 1 }}
         onBrushSizeChange={handleSizeChange}
         onOpacityChange={handleOpacityChange}
         onColorPick={handleColorPick}
@@ -104,16 +113,16 @@ function CanvasRegister({
         className="boxShadow"
       />
 
-      <section className="flex flex-row w-full h-20 boxShadow border-2 border-border">
+      <section className="boxShadow border-border flex h-20 w-full flex-row border-2">
         {/*TOOLS*/}
-        <div className="grid grid-cols-2 grid-rows-2 p-0.5 gap-0.5">
+        <div className="grid grid-cols-2 grid-rows-2 gap-0.5 p-0.5">
           <Button
             size="icon"
             className={cn(
-              "size-8 noShadow",
+              TOOL_BUTTON_CLASSES,
               selectedTool === "draw"
-                ? "bg-primary border-border"
-                : "bg-transparent border-border/30 hover:bg-primary/30 hover:border-border/60",
+                ? SELECTED_TOOL_CLASSES
+                : UNSELECTED_TOOL_CLASSES
             )}
             onClick={() => handleToolChange("draw")}
             aria-label="Кисть"
@@ -123,10 +132,10 @@ function CanvasRegister({
           <Button
             size="icon"
             className={cn(
-              "size-8 noShadow",
+              TOOL_BUTTON_CLASSES,
               selectedTool === "eraser"
-                ? "bg-primary border-border"
-                : "bg-transparent border-border/30 hover:bg-primary/30 hover:border-border/60",
+                ? SELECTED_TOOL_CLASSES
+                : UNSELECTED_TOOL_CLASSES
             )}
             onClick={() => handleToolChange("eraser")}
             aria-label="Ластик"
@@ -136,10 +145,10 @@ function CanvasRegister({
           <Button
             size="icon"
             className={cn(
-              "size-8 noShadow",
+              TOOL_BUTTON_CLASSES,
               selectedTool === "eyedropper"
-                ? "bg-primary border-border"
-                : "bg-transparent border-border/30 hover:bg-primary/30 hover:border-border/60",
+                ? SELECTED_TOOL_CLASSES
+                : UNSELECTED_TOOL_CLASSES
             )}
             onClick={() => handleToolChange("eyedropper")}
             aria-label="Пипетка"
@@ -148,10 +157,10 @@ function CanvasRegister({
           </Button>
         </div>
         {/*UNDO REDO*/}
-        <div className="flex flex-col p-1 gap-1">
+        <div className="flex flex-col gap-1 p-1">
           <Button
             size="icon"
-            className="size-8 noShadow bg-transparent border-border/30 hover:bg-primary/30 hover:border-border/60"
+            className="noShadow border-border/30 hover:bg-primary/30 hover:border-border/60 size-8 bg-transparent"
             onClick={handleUndo}
             aria-label="Отменить"
           >
@@ -159,7 +168,7 @@ function CanvasRegister({
           </Button>
           <Button
             size="icon"
-            className="size-8 noShadow bg-transparent border-border/30 hover:bg-primary/30 hover:border-border/60"
+            className="noShadow border-border/30 hover:bg-primary/30 hover:border-border/60 size-8 bg-transparent"
             onClick={handleRedo}
             aria-label="Повторить"
           >
@@ -167,18 +176,18 @@ function CanvasRegister({
           </Button>
         </div>
         {/*COLOR*/}
-        <div className="flex flex-row p-1 gap-1 items-center">
-          <div className="grid grid-rows-3 grid-cols-5 gap-1">
+        <div className="flex flex-row items-center gap-1 p-1">
+          <div className="grid grid-cols-5 grid-rows-3 gap-1">
             {PALETTE_COLORS.map(({ name, hex }) => (
               <Button
                 key={name}
                 type="button"
                 size="icon"
                 className={cn(
-                  "size-5 noShadow border-2 cursor-pointer transition-all hover:scale-110",
+                  "noShadow size-5 cursor-pointer border-2 transition-transform hover:scale-110",
                   selectedColor === hex
-                    ? "border-text scale-110 ring-1 ring-text"
-                    : "border-border",
+                    ? "border-text ring-text scale-110 ring-1"
+                    : "border-border"
                 )}
                 style={{ backgroundColor: hex }}
                 onClick={() => handleColorChange(hex)}
@@ -190,22 +199,22 @@ function CanvasRegister({
           </div>
         </div>
         {/*CUSTOM COLOR*/}
-        <div className="flex flex-row p-1 items-center">
+        <div className="flex flex-row items-center p-1">
           <ColorPicker value={selectedColor} onChange={handleColorChange}>
-            <div
-              role="button"
-              className="size-6 border-border border-2 noShadow cursor-pointer transition-all hover:scale-110 p-0"
-              style={{
-                backgroundColor: selectedColor,
-              }}
+            <Button
+              type="button"
+              size="icon"
+              className="border-border noShadow size-6 cursor-pointer border-2 p-0 transition-transform hover:scale-110"
+              style={{ backgroundColor: selectedColor }}
+              aria-label="Выбрать цвет"
               title="Выбрать цвет"
             />
           </ColorPicker>
         </div>
         {/*SLIDERS*/}
-        <div className="flex flex-col gap-4 flex-1 p-1">
-          <div className="w-full leading-tight flex flex-col gap-2">
-            <span className="text-muted text-[10px] font-bold uppercase tracking-widest">
+        <div className="flex flex-1 flex-col gap-4 p-1">
+          <div className="flex w-full flex-col gap-2 leading-tight">
+            <span className="text-muted text-[10px] font-bold tracking-widest uppercase">
               Размер: {selectedSize}px
             </span>
             <Slider
@@ -216,8 +225,8 @@ function CanvasRegister({
               aria-label="Размер кисти"
             />
           </div>
-          <div className="w-full leading-tight flex flex-col gap-2">
-            <span className="text-muted text-[10px] font-bold uppercase tracking-widest">
+          <div className="flex w-full flex-col gap-2 leading-tight">
+            <span className="text-muted text-[10px] font-bold tracking-widest uppercase">
               Непрозрачность: {Math.round(selectedOpacity * 100)}%
             </span>
             <Slider
@@ -232,11 +241,11 @@ function CanvasRegister({
         </div>
       </section>
 
-      <div className="flex flex-row gap-2 items-center w-full">
+      <div className="flex w-full flex-row items-center gap-2">
         <Button
           size="icon"
-          className="size-9 ml-auto"
-          onClick={handleClear}
+          className="ml-auto size-9"
+          onClick={() => setShowClearConfirm(true)}
           title="Очистить"
         >
           <RefreshCcw />
@@ -247,13 +256,39 @@ function CanvasRegister({
         <Button
           variant="success"
           onClick={handleCreate}
+          loading={isCreating}
           disabled={lines.length === 0}
         >
           Создать
         </Button>
       </div>
+
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <dialog
+            open
+            aria-labelledby="clear-canvas-title"
+            className="bg-background border-border boxShadow flex min-w-72 flex-col gap-4 border-4 p-6"
+          >
+            <span id="clear-canvas-title" className="text-center font-bold">
+              Очистить холст?
+            </span>
+            <div className="flex flex-row justify-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowClearConfirm(false)}
+              >
+                Отмена
+              </Button>
+              <Button variant="error" onClick={handleClear}>
+                Очистить
+              </Button>
+            </div>
+          </dialog>
+        </div>
+      )}
     </main>
   );
-}
+};
 
 export default CanvasRegister;

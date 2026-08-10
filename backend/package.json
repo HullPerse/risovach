@@ -1,17 +1,32 @@
 {
   "name": "elysia",
   "version": "1.0.50",
+  "type": "module",
+  "module": "src/index.server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.server.ts"
+    "dev": "bun run --watch src/index.server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings src/",
+    "db:clear": "rm -f data/db.sqlite data/db.sqlite-wal data/db.sqlite-shm",
+    "check": "ultracite check",
+    "fix": "ultracite fix"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/jwt": "^1.4.2",
     "drizzle-orm": "^0.45.2",
-    "elysia": "latest"
+    "elysia": "latest",
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "better-sqlite3": "^13.0.3",
     "bun-types": "latest",
-    "drizzle-kit": "^0.31.10"
-  },
-  "module": "src/index.server.js"
+    "drizzle-kit": "^0.31.10",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "ultracite": "7.10.2"
+  }
 }

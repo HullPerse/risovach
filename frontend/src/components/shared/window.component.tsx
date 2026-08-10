@@ -1,6 +1,7 @@
-import { cn } from "@/lib/index.utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode } from "react";
+
+import { cn } from "@/lib/index.utils";
 
 export function WindowComponent({
   children,
@@ -16,18 +17,18 @@ export function WindowComponent({
   return (
     <main
       className={cn(
-        "bg-background md:w-xl w-full border-4 border-border boxShadow max-h-[calc(100dvh-4rem)] flex flex-col",
-        className,
+        "bg-background border-border boxShadow flex max-h-[calc(100dvh-4rem)] w-full flex-col border-4 md:w-xl",
+        className
       )}
     >
       {/* HEADER */}
-      <section className="flex flex-row w-full gap-1 bg-primary border-b-4 border-border p-1 items-center justify-center select-none">
+      <section className="bg-primary border-border flex w-full flex-row items-center justify-center gap-1 border-b-4 p-1 select-none">
         <div className="absolute left-2 flex gap-1">
-          <div className="size-3 border-2 border-border bg-error" />
-          <div className="size-3 border-2 border-border bg-success" />
+          <div className="border-border bg-error size-3 border-2" />
+          <div className="border-border bg-success size-3 border-2" />
         </div>
 
-        <span className="font-bold text-sm">{label}</span>
+        <span className="text-sm font-bold">{label}</span>
       </section>
 
       {/* CHILDREN */}
@@ -43,7 +44,7 @@ export function WindowComponent({
           }}
           style={{ overflow: "auto" }}
         >
-          <section className={cn("p-1 overflow-y-auto", childrenClassName)}>
+          <section className={cn("overflow-y-auto p-1", childrenClassName)}>
             {children}
           </section>
         </motion.div>

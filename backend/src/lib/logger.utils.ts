@@ -1,37 +1,64 @@
-import type { LogLevel } from "@/types/logger";
-const LEVELS: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 }
-const ENV_LEVEL = Bun.env.LOG_LEVEL as LogLevel | undefined
-const MIN_LEVEL = LEVELS[ENV_LEVEL ?? "info"] ?? 1
+import pico from "picocolors";
+
+const LEVELS = { debug: 0, error: 4, info: 1, success: 2, warn: 3 } as const;
+type LogLevel = keyof typeof LEVELS;
+
+const MIN_LEVEL = LEVELS[(Bun.env.LOG_LEVEL as LogLevel) ?? "info"];
 
 export default class Logger {
   private author: string;
 
-  constructor(author: string = "SYSTEM") {
-    this.author = author.toUpperCase();
+  constructor(author = "SYSTEM") {
+    this.author = author;
   }
 
-  private get timestamp(): string {
-    return new Date().toLocaleTimeString("en-US", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+  private static timestamp(): string {
+    return new Date().toISOString().slice(0, 19).replace("T", " ");
   }
 
-  private format(message: string): string {
-    return `[${this.timestamp}] [${this.author}] ${message}`;
+  private format(level: LogLevel, message: string): string {
+    const colors: Record<LogLevel, (s: string) => string> = {
+      debug: pico.magenta,
+      error: pico.red,
+      info: pico.blue,
+      success: pico.green,
+      warn: pico.yellow,
+    };
+    return (
+      pico.gray(`[${Logger.timestamp()}]`) +
+      colors[level](` [${this.author}]`) +
+      pico.white(` ${message}`)
+    );
   }
 
   setAuthor(author: string): this {
-    this.author = author.toUpperCase();
+    this.author = author;
     return this;
   }
 
-  log = (message: string) => { if (MIN_LEVEL <= LEVELS.info) console.log(this.format(message)) }
-  debug = (message: string) => { if (MIN_LEVEL <= LEVELS.debug) console.debug(this.format(message)) }
-  info = (message: string) => { if (MIN_LEVEL <= LEVELS.info) console.info(this.format(message)) }
-  warn = (message: string) => { if (MIN_LEVEL <= LEVELS.warn) console.warn(this.format(message)) }
-  error = (message: string) => { if (MIN_LEVEL <= LEVELS.error) console.error(this.format(message)) }
-  clear = () => console.clear();
+  debug(message: string) {
+    if (MIN_LEVEL <= LEVELS.debug) {
+      console.debug(this.format("debug", message));
+    }
+  }
+  info(message: string) {
+    if (MIN_LEVEL <= LEVELS.info) {
+      console.info(this.format("info", message));
+    }
+  }
+  success(message: string) {
+    if (MIN_LEVEL <= LEVELS.success) {
+      console.log(this.format("success", message));
+    }
+  }
+  warn(message: string) {
+    if (MIN_LEVEL <= LEVELS.warn) {
+      console.warn(this.format("warn", message));
+    }
+  }
+  error(message: string) {
+    if (MIN_LEVEL <= LEVELS.error) {
+      console.error(this.format("error", message));
+    }
+  }
 }

@@ -1,11 +1,18 @@
-import { defineConfig } from "vite";
-import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import path from "node:path";
+
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 import compression from "vite-plugin-compression2";
-import { resolve } from "node:path";
 
 export default defineConfig({
+  build: {
+    sourcemap: false,
+  },
+
+  clearScreen: false,
+
   plugins: [
     react(),
     tailwindcss(),
@@ -15,13 +22,9 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
   ],
 
-  clearScreen: false,
-  build: {
-    sourcemap: false,
-  },
   resolve: {
     alias: {
-      "@": resolve(import.meta.dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
 

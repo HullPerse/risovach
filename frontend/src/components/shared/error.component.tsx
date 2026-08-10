@@ -1,9 +1,5 @@
-export function SmallError() {
-  return <></>;
-}
-export function WindowError() {
-  return <></>;
-}
-export function BigError() {
-  return <></>;
-}
+export const smallError = () => null;
+export const windowError = () => null;
+export const bigError = () => null;
+export const windowLoader = () => null;
+export const bigLoader = () => null;

@@ -1,17 +1,11 @@
-import type {
-  ChannelFormat,
-  ColorFormat,
-  HSL,
-  HSV,
-  RGB,
-} from "@/types/color";
+import type { ChannelFormat, ColorFormat, HSL, HSV, RGB } from "@/types/color";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 const round = (value: number) => Math.round(value * 100) / 100;
 
-export function hsvToRgb({ h, s, v }: HSV): RGB {
+export const hsvToRgb = ({ h, s, v }: HSV): RGB => {
   const sat = s / 100;
   const val = v / 100;
   const c = val * sat;
@@ -22,21 +16,28 @@ export function hsvToRgb({ h, s, v }: HSV): RGB {
   let g = 0;
   let b = 0;
 
-  if (h < 60) [r, g, b] = [c, x, 0];
-  else if (h < 120) [r, g, b] = [x, c, 0];
-  else if (h < 180) [r, g, b] = [0, c, x];
-  else if (h < 240) [r, g, b] = [0, x, c];
-  else if (h < 300) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
+  if (h < 60) {
+    [r, g, b] = [c, x, 0];
+  } else if (h < 120) {
+    [r, g, b] = [x, c, 0];
+  } else if (h < 180) {
+    [r, g, b] = [0, c, x];
+  } else if (h < 240) {
+    [r, g, b] = [0, x, c];
+  } else if (h < 300) {
+    [r, g, b] = [x, 0, c];
+  } else {
+    [r, g, b] = [c, 0, x];
+  }
 
   return {
-    r: Math.round((r + m) * 255),
-    g: Math.round((g + m) * 255),
     b: Math.round((b + m) * 255),
+    g: Math.round((g + m) * 255),
+    r: Math.round((r + m) * 255),
   };
-}
+};
 
-export function rgbToHsv({ r, g, b }: RGB): HSV {
+export const rgbToHsv = ({ r, g, b }: RGB): HSV => {
   const rn = r / 255;
   const gn = g / 255;
   const bn = b / 255;
@@ -46,19 +47,25 @@ export function rgbToHsv({ r, g, b }: RGB): HSV {
 
   let h = 0;
   if (delta !== 0) {
-    if (max === rn) h = 60 * (((gn - bn) / delta) % 6);
-    else if (max === gn) h = 60 * ((bn - rn) / delta + 2);
-    else h = 60 * ((rn - gn) / delta + 4);
+    if (max === rn) {
+      h = 60 * (((gn - bn) / delta) % 6);
+    } else if (max === gn) {
+      h = 60 * ((bn - rn) / delta + 2);
+    } else {
+      h = 60 * ((rn - gn) / delta + 4);
+    }
   }
-  if (h < 0) h += 360;
+  if (h < 0) {
+    h += 360;
+  }
 
   const s = max === 0 ? 0 : delta / max;
   const v = max;
 
   return { h, s: s * 100, v: v * 100 };
-}
+};
 
-export function rgbToHsl({ r, g, b }: RGB): HSL {
+export const rgbToHsl = ({ r, g, b }: RGB): HSL => {
   const rn = r / 255;
   const gn = g / 255;
   const bn = b / 255;
@@ -72,20 +79,26 @@ export function rgbToHsl({ r, g, b }: RGB): HSL {
 
   if (delta !== 0) {
     s = delta / (1 - Math.abs(2 * l - 1));
-    if (max === rn) h = 60 * (((gn - bn) / delta) % 6);
-    else if (max === gn) h = 60 * ((bn - rn) / delta + 2);
-    else h = 60 * ((rn - gn) / delta + 4);
+    if (max === rn) {
+      h = 60 * (((gn - bn) / delta) % 6);
+    } else if (max === gn) {
+      h = 60 * ((bn - rn) / delta + 2);
+    } else {
+      h = 60 * ((rn - gn) / delta + 4);
+    }
   }
-  if (h < 0) h += 360;
+  if (h < 0) {
+    h += 360;
+  }
 
   return {
     h: Math.round(h),
-    s: Math.round(s * 100),
     l: Math.round(l * 100),
+    s: Math.round(s * 100),
   };
-}
+};
 
-export function hslToRgb({ h, s, l }: HSL): RGB {
+export const hslToRgb = ({ h, s, l }: HSL): RGB => {
   const sn = s / 100;
   const ln = l / 100;
   const c = (1 - Math.abs(2 * ln - 1)) * sn;
@@ -96,98 +109,111 @@ export function hslToRgb({ h, s, l }: HSL): RGB {
   let g = 0;
   let b = 0;
 
-  if (h < 60) [r, g, b] = [c, x, 0];
-  else if (h < 120) [r, g, b] = [x, c, 0];
-  else if (h < 180) [r, g, b] = [0, c, x];
-  else if (h < 240) [r, g, b] = [0, x, c];
-  else if (h < 300) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
+  if (h < 60) {
+    [r, g, b] = [c, x, 0];
+  } else if (h < 120) {
+    [r, g, b] = [x, c, 0];
+  } else if (h < 180) {
+    [r, g, b] = [0, c, x];
+  } else if (h < 240) {
+    [r, g, b] = [0, x, c];
+  } else if (h < 300) {
+    [r, g, b] = [x, 0, c];
+  } else {
+    [r, g, b] = [c, 0, x];
+  }
 
   return {
-    r: Math.round((r + m) * 255),
-    g: Math.round((g + m) * 255),
     b: Math.round((b + m) * 255),
+    g: Math.round((g + m) * 255),
+    r: Math.round((r + m) * 255),
   };
-}
+};
 
-export function rgbToHex({ r, g, b }: RGB): string {
+export const rgbToHex = ({ r, g, b }: RGB): string => {
   const toHex = (n: number) =>
     clamp(Math.round(n), 0, 255).toString(16).padStart(2, "0");
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
-}
+};
 
-export function hexToRgb(hex: string): RGB | null {
-  let value = hex.trim().replace(/^#/, "");
+export const hexToRgb = (hex: string): RGB | null => {
+  let value = hex.trim().replace(/^#/u, "");
   if (value.length === 3) {
-    value = value
-      .split("")
-      .map((c) => c + c)
-      .join("");
+    value = [...value].map((c) => c + c).join("");
   }
-  if (!/^[0-9a-fA-F]{6}$/.test(value)) return null;
+  if (!/^[0-9a-fA-F]{6}$/u.test(value)) {
+    return null;
+  }
   return {
-    r: parseInt(value.slice(0, 2), 16),
-    g: parseInt(value.slice(2, 4), 16),
-    b: parseInt(value.slice(4, 6), 16),
+    b: Number.parseInt(value.slice(4, 6), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    r: Number.parseInt(value.slice(0, 2), 16),
   };
-}
+};
 
-export function hsvToHex(hsv: HSV): string {
-  return rgbToHex(hsvToRgb(hsv));
-}
+export const hsvToHex = (hsv: HSV): string => rgbToHex(hsvToRgb(hsv));
 
-export function hexToHsv(hex: string): HSV | null {
+export const hexToHsv = (hex: string): HSV | null => {
   const rgb = hexToRgb(hex);
-  if (!rgb) return null;
+  if (!rgb) {
+    return null;
+  }
   return rgbToHsv(rgb);
-}
+};
 
-export function hsvToChannelStrings(
+export const hsvToChannelStrings = (
   hsv: HSV,
-  format: ChannelFormat,
-): [string, string, string] {
+  format: ChannelFormat
+): [string, string, string] => {
   if (format === "rgb") {
     const { r, g, b } = hsvToRgb(hsv);
     return [String(r), String(g), String(b)];
   }
   const { h, s, l } = rgbToHsl(hsvToRgb(hsv));
   return [String(h), String(s), String(l)];
-}
+};
 
-export function formatColor(hsv: HSV, format: ColorFormat): string {
+export const formatColor = (hsv: HSV, format: ColorFormat): string => {
   const rgb = hsvToRgb(hsv);
   switch (format) {
-    case "hex":
+    case "hex": {
       return rgbToHex(rgb);
-    case "rgb":
+    }
+    case "rgb": {
       return `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+    }
     case "hsl": {
       const hsl = rgbToHsl(rgb);
       return `${hsl.h}, ${hsl.s}%, ${hsl.l}%`;
     }
+    default: {
+      return rgbToHex(rgb);
+    }
   }
-}
+};
 
-export function parseColor(input: string, format: ColorFormat): HSV | null {
+export const parseColor = (input: string, format: ColorFormat): HSV | null => {
   const value = input.trim();
   if (format === "hex") {
     return hexToHsv(value);
   }
 
   const numbers = value
-    .replace(/[^0-9.,%-]/g, " ")
-    .split(/[\s,]+/)
+    .replaceAll(/[^0-9.,%-]/gu, " ")
+    .split(/[\s,]+/u)
     .filter(Boolean)
-    .map((n) => parseFloat(n.replace("%", "")));
+    .map((n) => Number(n.replace("%", "")));
 
-  if (numbers.length < 3 || numbers.some((n) => Number.isNaN(n))) return null;
+  if (numbers.length < 3 || numbers.some((n) => Number.isNaN(n))) {
+    return null;
+  }
 
   if (format === "rgb") {
     const [r, g, b] = numbers;
     return rgbToHsv({
-      r: clamp(r, 0, 255),
-      g: clamp(g, 0, 255),
       b: clamp(b, 0, 255),
+      g: clamp(g, 0, 255),
+      r: clamp(r, 0, 255),
     });
   }
 
@@ -195,10 +221,10 @@ export function parseColor(input: string, format: ColorFormat): HSV | null {
   return rgbToHsv(
     hslToRgb({
       h: clamp(h, 0, 360),
-      s: clamp(s, 0, 100),
       l: clamp(l, 0, 100),
-    }),
+      s: clamp(s, 0, 100),
+    })
   );
-}
+};
 
 export { clamp, round };

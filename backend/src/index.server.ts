@@ -1,45 +1,45 @@
-import { Elysia } from "elysia";
-import { registerClient, unregisterClient } from "./lib/websocket.utils";
-import Logger from "./lib/logger.utils";
- import {
-   errorPlugin,
- } from "./plugins/index.plugin";
-import migrate from "./db/migration.db";
+import pico from "picocolors";
 
+import { createApp } from "./app.server";
+import migrate from "./db/migration.db";
+import Logger from "./lib/logger.utils";
+import { config, validateConfig } from "./server.config";
 
 const logger = new Logger("SYSTEM");
 
+const configErrors = validateConfig();
+
+if (configErrors.length > 0) {
+  logger.error("Configuration errors:");
+
+  for (const error of configErrors) logger.error(`   - ${error}`);
+  process.exit(1);
+}
+
 migrate();
-logger.info("Database migrations applied")
 
-new Elysia()
-  .ws("/ws", {
-  open(ws) {
-    registerClient(ws);
-  },
-  close(ws) {
-    unregisterClient(ws);
-  },
-  })
- .use(errorPlugin)
-  .get("/", () => "RISOVACH SERVER")
-  .listen(Bun.env.PORT ?? 2000, (e) => {
-  const URL = `http://${e.hostname}:${e.port}`;
-  logger.info(`API -> ${URL}`);
-  });
+logger.info("Database migrations applied");
 
- const shutdown = async () => {
-   logger.info("Shutting down...");
+createApp().listen(config.port, (e) => {
+  const url = pico.cyan(`http://${e.hostname}:${e.port}`);
+  const studio = pico.cyan(`https://local.drizzle.studio`);
+  logger.success(`API    -> ${url}`);
+  logger.success(`Studio -> ${studio}`);
+});
 
-   const { rawDb } = await import("@/db/index.db");
+const shutdown = async () => {
+  logger.info("Shutting down...");
 
- try {
-   rawDb.run("PRAGMA optimize;");
- } catch (error) {
-   logger.error(String(error));
- }
- process.exit(0);
- };
+  const { rawDb } = await import("@/db/index.db");
 
- process.on("SIGINT", shutdown);
- process.on("SIGTERM", shutdown);
+  try {
+    rawDb.run("PRAGMA optimize;");
+  } catch (error) {
+    logger.error(String(error));
+  }
+
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

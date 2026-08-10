@@ -1,5 +1,8 @@
 import { create } from "zustand";
+
 import type { Point, DrawingLine, CanvasTool } from "@/types/canvas";
+
+let nextLineId = 1;
 
 interface CanvasState {
   lines: DrawingLine[];
@@ -35,82 +38,65 @@ interface CanvasState {
     tool: CanvasTool,
     color: string,
     brushSize: number,
-    opacity: number,
+    opacity: number
   ) => boolean;
   resetView: (initialZoom: number) => void;
   resetAll: () => void;
 }
 
 const initialState = {
-  lines: [],
+  canRedo: false,
+  canUndo: false,
   currentPoints: [],
+  future: [],
+  isAltPressed: false,
   isDrawing: false,
   isPanning: false,
-  mousePos: null,
-  canUndo: false,
-  canRedo: false,
-  zoomLevel: 1,
-  panOffset: { x: 0, y: 0 },
   isSpacePressed: false,
-  isAltPressed: false,
+  lines: [],
+  mousePos: null,
+  panOffset: { x: 0, y: 0 },
   past: [],
-  future: [],
+  zoomLevel: 1,
 };
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   ...initialState,
 
-  setLines: (lines) => set({ lines }),
-  setCurrentPoints: (currentPoints) => set({ currentPoints }),
-  setIsDrawing: (isDrawing) => set({ isDrawing }),
-  setIsPanning: (isPanning) => set({ isPanning }),
-  setMousePos: (mousePos) => set({ mousePos }),
-  setCanUndo: (canUndo) => set({ canUndo }),
-  setCanRedo: (canRedo) => set({ canRedo }),
-  setZoomLevel: (zoomLevel) => set({ zoomLevel }),
-  setPanOffset: (panOffset) => set({ panOffset }),
-  setIsSpacePressed: (isSpacePressed) => set({ isSpacePressed }),
-  setIsAltPressed: (isAltPressed) => set({ isAltPressed }),
-
-  undo: () => {
-    const { past, lines, future } = get();
-    if (past.length === 0) return;
-    set({
-      lines: past[past.length - 1],
-      past: past.slice(0, -1),
-      future: [lines, ...future],
-      canUndo: past.length > 1,
-      canRedo: true,
-    });
-  },
-
-  redo: () => {
-    const { future, lines, past } = get();
-    if (future.length === 0) return;
-    set({
-      lines: future[0],
-      past: [...past, lines],
-      future: future.slice(1),
-      canRedo: future.length > 1,
-      canUndo: true,
-    });
-  },
-
   clear: () => {
     const { lines } = get();
-    if (lines.length === 0) return;
+    if (lines.length === 0) {
+      return;
+    }
     set({
-      past: [...get().past, lines],
+      canRedo: false,
+      canUndo: true,
       future: [],
       lines: [],
-      canUndo: true,
-      canRedo: false,
+      past: [...get().past, lines],
     });
   },
-
+  redo: () => {
+    const { future, lines, past } = get();
+    if (future.length === 0) {
+      return;
+    }
+    set({
+      canRedo: future.length > 1,
+      canUndo: true,
+      future: future.slice(1),
+      lines: future[0],
+      past: [...past, lines],
+    });
+  },
+  resetAll: () => set({ ...initialState }),
+  resetView: (initialZoom) =>
+    set({ panOffset: { x: 0, y: 0 }, zoomLevel: initialZoom }),
   saveStroke: (tool, color, brushSize, opacity) => {
     const { currentPoints, lines, past } = get();
-    if (currentPoints.length === 0) return false;
+    if (currentPoints.length === 0) {
+      return false;
+    }
 
     let finalPoints = currentPoints;
     if (finalPoints.length === 1) {
@@ -118,27 +104,48 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
 
     const newLine: DrawingLine = {
-      points: finalPoints,
-      color: tool === "eraser" ? "white" : color,
       brushSize,
+      color: tool === "eraser" ? "white" : color,
+      id: nextLineId,
       opacity,
+      points: finalPoints,
       tool,
     };
+    nextLineId += 1;
 
     set({
-      past: [...past, lines],
+      canRedo: false,
+      canUndo: true,
+      currentPoints: [],
       future: [],
       lines: [...lines, newLine],
-      currentPoints: [],
-      canUndo: true,
-      canRedo: false,
+      past: [...past, lines],
     });
 
     return true;
   },
-
-  resetView: (initialZoom) =>
-    set({ zoomLevel: initialZoom, panOffset: { x: 0, y: 0 } }),
-
-  resetAll: () => set({ ...initialState }),
+  setCanRedo: (canRedo) => set({ canRedo }),
+  setCanUndo: (canUndo) => set({ canUndo }),
+  setCurrentPoints: (currentPoints) => set({ currentPoints }),
+  setIsAltPressed: (isAltPressed) => set({ isAltPressed }),
+  setIsDrawing: (isDrawing) => set({ isDrawing }),
+  setIsPanning: (isPanning) => set({ isPanning }),
+  setIsSpacePressed: (isSpacePressed) => set({ isSpacePressed }),
+  setLines: (lines) => set({ lines }),
+  setMousePos: (mousePos) => set({ mousePos }),
+  setPanOffset: (panOffset) => set({ panOffset }),
+  setZoomLevel: (zoomLevel) => set({ zoomLevel }),
+  undo: () => {
+    const { past, lines, future } = get();
+    if (past.length === 0) {
+      return;
+    }
+    set({
+      canRedo: true,
+      canUndo: past.length > 1,
+      future: [lines, ...future],
+      lines: past.at(-1) ?? lines,
+      past: past.slice(0, -1),
+    });
+  },
 }));

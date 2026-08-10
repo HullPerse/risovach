@@ -1,10 +1,6 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ClipboardEvent,
-  type KeyboardEvent,
-} from "react";
+import { useRef, useState } from "react";
+import type { ClipboardEvent, KeyboardEvent } from "react";
+
 import { CHANNEL_CONFIG, FORMAT_PREFIX } from "@/config/color.config";
 import {
   clamp,
@@ -13,53 +9,58 @@ import {
   rgbToHsv,
 } from "@/lib/color.utils";
 import { cn } from "@/lib/index.utils";
-import type { ChannelInputsProps } from "@/types/color";
+import type { ChannelFormat, ChannelInputsProps } from "@/types/color";
 
-export function ChannelInputs({ format, hsv, commit }: ChannelInputsProps) {
-  const [channelValues, setChannelValues] = useState<[string, string, string]>([
-    "0",
-    "0",
-    "0",
-  ]);
-  const [focusedField, setFocusedField] = useState<number | null>(null);
+const parseChannel = (n: string): number => {
+  const value = Math.trunc(Number(n));
+  return Number.isNaN(value) ? 0 : value;
+};
+
+const CHANNEL_LABELS: Record<ChannelFormat, [string, string, string]> = {
+  hsl: ["h", "s", "l"],
+  rgb: ["r", "g", "b"],
+};
+
+export const ChannelInputs = ({ format, hsv, commit }: ChannelInputsProps) => {
+  const [draft, setDraft] = useState<[string, string, string]>(() =>
+    hsvToChannelStrings(hsv, format)
+  );
+  const [isEditing, setIsEditing] = useState(false);
   const channelRefs = useRef<(HTMLInputElement | null)[]>([null, null, null]);
   const config = CHANNEL_CONFIG[format];
 
-  useEffect(() => {
-    if (focusedField !== null) return;
-    setChannelValues(hsvToChannelStrings(hsv, format));
-  }, [hsv, format, focusedField]);
+  const values = isEditing ? draft : hsvToChannelStrings(hsv, format);
 
   const commitChannels = (channels: [string, string, string]) => {
-    const [a, b, c] = channels.map((n) => parseInt(n, 10) || 0);
+    const [a, b, c] = channels.map(parseChannel);
     if (format === "rgb") {
       commit(
         rgbToHsv({
-          r: clamp(a, 0, 255),
-          g: clamp(b, 0, 255),
           b: clamp(c, 0, 255),
-        }),
+          g: clamp(b, 0, 255),
+          r: clamp(a, 0, 255),
+        })
       );
     } else {
       commit(
         rgbToHsv(
           hslToRgb({
             h: clamp(a, 0, 360),
-            s: clamp(b, 0, 100),
             l: clamp(c, 0, 100),
-          }),
-        ),
+            s: clamp(b, 0, 100),
+          })
+        )
       );
     }
   };
 
   const handleChange = (index: number, rawValue: string) => {
-    const cleaned = rawValue.replace(/[^0-9]/g, "");
-    const numeric = parseInt(cleaned, 10) || 0;
+    const cleaned = rawValue.replaceAll(/[^0-9]/gu, "");
+    const numeric = parseChannel(cleaned);
 
-    const next = [...channelValues] as [string, string, string];
+    const next = [...draft] as [string, string, string];
     next[index] = cleaned === "" ? "" : String(numeric);
-    setChannelValues(next);
+    setDraft(next);
 
     if (next.every((c) => c !== "")) {
       commitChannels(next);
@@ -76,11 +77,7 @@ export function ChannelInputs({ format, hsv, commit }: ChannelInputsProps) {
         e.preventDefault();
         channelRefs.current[index + 1]?.focus();
       }
-    } else if (
-      e.key === "Backspace" &&
-      channelValues[index] === "" &&
-      index > 0
-    ) {
+    } else if (e.key === "Backspace" && values[index] === "" && index > 0) {
       e.preventDefault();
       channelRefs.current[index - 1]?.focus();
     }
@@ -89,11 +86,11 @@ export function ChannelInputs({ format, hsv, commit }: ChannelInputsProps) {
   const handlePaste = (_index: number, e: ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData("text");
     const numbers = text
-      .replace(/[^0-9.,\s]/g, " ")
-      .split(/[\s,]+/)
+      .replaceAll(/[^0-9.,\s]/gu, " ")
+      .split(/[\s,]+/u)
       .filter(Boolean)
       .slice(0, 3)
-      .map((n) => parseInt(n, 10) || 0);
+      .map(parseChannel);
 
     if (numbers.length === 3) {
       e.preventDefault();
@@ -103,27 +100,26 @@ export function ChannelInputs({ format, hsv, commit }: ChannelInputsProps) {
         number,
       ];
       const strings = clamped.map(String) as [string, string, string];
-      setChannelValues(strings);
+      setDraft(strings);
       commitChannels(strings);
       channelRefs.current[2]?.focus();
     }
   };
 
   const handleBlur = () => {
-    setFocusedField(null);
-    const cleaned = channelValues.map((c, i) => {
-      const n = c === "" ? 0 : parseInt(c, 10) || 0;
+    setIsEditing(false);
+    const cleaned = values.map((c, i) => {
+      const n = c === "" ? 0 : parseChannel(c);
       return String(clamp(n, 0, config.maxs[i]));
     }) as [string, string, string];
-    setChannelValues(cleaned);
     commitChannels(cleaned);
   };
 
   return (
     <div className="flex gap-1.5">
-      {channelValues.map((val, i) => (
+      {values.map((val, i) => (
         <input
-          key={i}
+          key={CHANNEL_LABELS[format][i]}
           ref={(el) => {
             channelRefs.current[i] = el;
           }}
@@ -136,16 +132,19 @@ export function ChannelInputs({ format, hsv, commit }: ChannelInputsProps) {
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={(e) => handlePaste(i, e)}
-          onFocus={() => setFocusedField(i)}
+          onFocus={() => {
+            setIsEditing(true);
+            setDraft(hsvToChannelStrings(hsv, format));
+          }}
           onBlur={handleBlur}
           className={cn(
-            "h-8 w-full min-w-0 border-2 border-border bg-input px-1 py-2 text-center text-sm",
-            "outline-none transition-colors",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-            "focus-visible:bg-card",
+            "border-border bg-input h-8 w-full min-w-0 border-2 px-1 py-2 text-center text-sm",
+            "transition-colors outline-none",
+            "focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-offset-2",
+            "focus-visible:bg-card"
           )}
         />
       ))}
     </div>
   );
-}
+};
