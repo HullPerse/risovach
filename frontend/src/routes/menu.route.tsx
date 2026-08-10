@@ -22,7 +22,7 @@ const TABS = [
   variant: VariantProps<typeof buttonVariants>["variant"];
 }[];
 
-const Menu = () => {
+const MenuPage = () => {
   const logout = useLogout();
   const { user } = useUserStore();
 
@@ -76,4 +76,4 @@ const Menu = () => {
   );
 };
 
-export default Menu;
+export default MenuPage;

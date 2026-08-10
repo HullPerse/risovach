@@ -88,7 +88,7 @@ const reverseGeocode = async (
 
 const waitForTimeout = (milliseconds: number): Promise<null> => {
   const { promise, resolve } = deferred<null>();
-  void setTimeout(resolve, milliseconds, null);
+  setTimeout(resolve, milliseconds, null);
   return promise;
 };
 

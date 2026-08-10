@@ -2,15 +2,17 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
 } from "@tanstack/react-router";
 import { lazy } from "react";
 
-import { bigError, bigLoader } from "@/components/shared/error.component";
+import { bigError } from "@/components/shared/error.component";
+import { BigLoader } from "@/components/shared/loader.component";
 import { initializeUserStore, useUserStore } from "@/stores/user.store";
 
-import AuthPage from "./auth.route";
-import Menu from "./menu.route";
+const AuthPage = lazyRouteComponent(() => import("./auth.route"));
+const MenuPage = lazyRouteComponent(() => import("./menu.route"));
 
 const requireAuth = () => async () => {
   await initializeUserStore();
@@ -32,7 +34,6 @@ const indexRoute = createRoute({
   component: App,
   getParentRoute: () => rootRoute,
   path: "/",
-  pendingComponent: bigLoader,
 });
 
 const errorRoute = createRoute({
@@ -48,17 +49,21 @@ const authRoute = createRoute({
 });
 const menuRoute = createRoute({
   beforeLoad: requireAuth(),
-  component: Menu,
+  component: MenuPage,
   getParentRoute: () => rootRoute,
   path: "/menu",
-  pendingComponent: bigLoader,
+  pendingComponent: BigLoader,
 });
 
-const routeTree = rootRoute.addChildren([
+const routerTree = rootRoute.addChildren([
   indexRoute,
   authRoute,
   menuRoute,
   errorRoute,
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree: routerTree,
+  defaultPreload: "intent",
+  scrollRestoration: true,
+});

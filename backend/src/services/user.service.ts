@@ -11,40 +11,40 @@ export class UserService {
     this.database = database;
   }
 
-  async getByUsername(username: string): Promise<UserRow> {
-    const [row] = await this.database
+  getByUsername(username: string): UserRow | undefined {
+    return this.database
       .select()
       .from(schema.users)
-      .where(eq(schema.users.username, username));
-
-    return row;
+      .where(eq(schema.users.username, username))
+      .get();
   }
 
-  async getById(id: number): Promise<UserRow> {
-    const [row] = await this.database
+  getById(id: number): UserRow | undefined {
+    return this.database
       .select()
       .from(schema.users)
-      .where(eq(schema.users.id, id));
-
-    return row;
+      .where(eq(schema.users.id, id))
+      .get();
   }
 
-  async getUsernameById(id: number): Promise<string> {
-    const [row] = await this.database
+  getUsernameById(id: number): string | null {
+    const row = this.database
       .select({ username: schema.users.username })
       .from(schema.users)
-      .where(eq(schema.users.id, id));
+      .where(eq(schema.users.id, id))
+      .get();
 
     return row?.username ?? null;
   }
 
-  async usernameExists(username: string): Promise<boolean> {
-    const [row] = await this.database
-      .select({ id: schema.users.id })
-      .from(schema.users)
-      .where(eq(schema.users.username, username));
-
-    return Boolean(row);
+  usernameExists(username: string): boolean {
+    return Boolean(
+      this.database
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.username, username))
+        .get()
+    );
   }
 }
 

@@ -31,6 +31,15 @@ export const UserApi = {
     return `${API_URL}/users/${user.id}/avatar?size=${size}`;
   },
 
+  async currentUser(): Promise<User | null> {
+    try {
+      const response = await request("/auth/me", {}, userResponseSchema);
+      return response.user;
+    } catch {
+      return null;
+    }
+  },
+
   async login(data: LoginPayload): Promise<User> {
     const response = await request(
       "/auth/login",
@@ -46,15 +55,6 @@ export const UserApi = {
 
   async logout(): Promise<void> {
     await request("/auth/logout", { method: "POST" }, okSchema);
-  },
-
-  async currentUser(): Promise<User | null> {
-    try {
-      const response = await request("/auth/me", {}, userResponseSchema);
-      return response.user;
-    } catch {
-      return null;
-    }
   },
 
   async register(data: RegisterPayload): Promise<User> {

@@ -7,7 +7,7 @@ const userRoute = new Elysia({ prefix: "/users" })
   .use(servicesPlugin)
   .get(
     "/:id/avatar",
-    async ({ params, query, set, userService, request }) => {
+    ({ params, query, set, userService, request }) => {
       const id = Number(params.id);
 
       if (!Number.isInteger(id) || id <= 0) {
@@ -15,7 +15,7 @@ const userRoute = new Elysia({ prefix: "/users" })
         return { error: "Not Found" };
       }
 
-      const row = await userService.getById(id);
+      const row = userService.getById(id);
 
       if (!row) {
         set.status = 404;

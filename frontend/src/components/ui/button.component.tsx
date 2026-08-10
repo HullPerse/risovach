@@ -21,7 +21,7 @@ export const Button = ({
     loading?: boolean;
   }) => {
   if (!rendered) {
-    return;
+    return null;
   }
 
   return (

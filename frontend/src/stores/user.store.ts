@@ -54,7 +54,7 @@ export const useUserStore = create<UserStore>()(
             get().unsubscribeFromUserUpdates();
             get().clear();
           } else {
-            void get().refresh();
+            get().refresh();
           }
         });
       },

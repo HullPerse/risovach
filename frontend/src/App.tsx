@@ -19,8 +19,9 @@ const App = () => {
         return;
       }
 
-      if (!useUserStore.getState().user)
+      if (!useUserStore.getState().user) {
         navigate({ replace: true, to: "/auth" });
+      }
     };
 
     document.addEventListener("visibilitychange", onVisible);
@@ -28,15 +29,16 @@ const App = () => {
   }, [navigate]);
 
   return (
-    <div
+    <main
       className="bg-background relative h-screen w-screen overflow-hidden"
       onContextMenu={(e) => e.preventDefault()}
     >
       <DotsBackground />
+
       <div className="pointer-events-none relative z-10 h-full w-full">
         <Outlet />
       </div>
-    </div>
+    </main>
   );
 };
 

@@ -23,7 +23,7 @@ export const useCanvasKeyboard = (
       const store = useCanvasStore.getState();
 
       const target = e.target as HTMLElement;
-      if (target?.closest?.("input, textarea, select, [contenteditable]")) {
+      if (target.closest("input, textarea, select, [contenteditable]")) {
         return;
       }
 

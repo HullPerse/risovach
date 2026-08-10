@@ -14,3 +14,7 @@ export const SmallLoader = () => (
     />
   </main>
 );
+
+export const WindowLoader = () => <main>Hello Loader</main>;
+
+export const BigLoader = () => <main>Hello Loader</main>;

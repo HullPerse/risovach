@@ -59,11 +59,7 @@ export class CanvasViewport {
       return false;
     }
 
-    const pn = this.props.panning ?? {
-      allowLeftClickPan: false,
-      allowMiddleClickPan: false,
-      allowRightClickPan: true,
-    };
+    const pn = this.props.panning;
     const { button } = e.evt;
     const store = getStore();
 

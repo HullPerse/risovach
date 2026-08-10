@@ -107,8 +107,7 @@ export const Input = ({
   ...props
 }: ComponentProps<"input"> & { arrows?: boolean; amount?: boolean }) => {
   const [visiblePassword, setVisiblePassword] = useState(false);
-  const [internalValue, setInternalValue] = useState(value);
-  const inputValue = value === undefined ? internalValue : value;
+  const inputValue = value;
 
   const inputType = type === "password" && visiblePassword ? "text" : type;
   const showAmount = Boolean(amount && (props.min || props.max));
@@ -126,10 +125,6 @@ export const Input = ({
     };
 
     onChange?.(syntheticEvent);
-
-    if (value === undefined) {
-      setInternalValue(clampedValue);
-    }
   };
 
   const updateValue = (newValue: string) => {

@@ -7,7 +7,7 @@
     "dev": "bun run --watch src/index.server.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings src/",
+    "lint": "oxlint --type-aware --deny-warnings src/",
     "db:clear": "rm -f data/db.sqlite data/db.sqlite-wal data/db.sqlite-shm",
     "check": "ultracite check",
     "fix": "ultracite fix"

@@ -3,7 +3,7 @@ import pico from "picocolors";
 const LEVELS = { debug: 0, error: 4, info: 1, success: 2, warn: 3 } as const;
 type LogLevel = keyof typeof LEVELS;
 
-const MIN_LEVEL = LEVELS[(Bun.env.LOG_LEVEL as LogLevel) ?? "info"];
+const MIN_LEVEL = LEVELS[(Bun.env.LOG_LEVEL as LogLevel | undefined) ?? "info"];
 
 export default class Logger {
   private author: string;

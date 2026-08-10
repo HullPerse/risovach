@@ -14,7 +14,7 @@ const authPlugin = new Elysia({ name: "auth" })
     })
   )
   .derive({ as: "scoped" }, async ({ jwt: jwtInstance, cookie }) => {
-    const token = cookie.session?.value ?? null;
+    const token = cookie.session.value ?? null;
 
     if (!token) return { token: null, user: null };
 
@@ -23,7 +23,7 @@ const authPlugin = new Elysia({ name: "auth" })
     if (!payload) return { token, user: null };
     if (typeof payload.sub !== "string") return { token, user: null };
 
-    const username = await resolveUsername(payload.sub);
+    const username = resolveUsername(payload.sub);
 
     return {
       token,

@@ -97,7 +97,9 @@ const LocationBadge = ({
           <Flag code={geo.countryCode} alt={name ?? geo.countryCode} />
         ) : null}
         <span className="text-xs font-bold">{name ?? "Местоположение"}</span>
-        {geo.city ? <span className="text-muted text-xs">{geo.city}</span> : null}
+        {geo.city ? (
+          <span className="text-muted text-xs">{geo.city}</span>
+        ) : null}
       </>
     );
   } else if (failed) {

@@ -114,20 +114,20 @@ export const useDotsGrid = () => {
   useEffect(() => {
     const container = containerRef.current;
 
-    if (!container) return;
-
     let id = 0;
+    let observer: ResizeObserver | null = null;
 
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(id);
-      id = requestAnimationFrame(rebuild);
-    });
-
-    observer.observe(container);
+    if (container) {
+      observer = new ResizeObserver(() => {
+        cancelAnimationFrame(id);
+        id = requestAnimationFrame(rebuild);
+      });
+      observer.observe(container);
+    }
 
     return () => {
       cancelAnimationFrame(id);
-      observer.disconnect();
+      observer?.disconnect();
     };
   }, [rebuild]);
 

@@ -54,7 +54,7 @@ const CanvasMagnifier = ({
   })();
 
   if (!magnifier) {
-    return;
+    return null;
   }
 
   return (

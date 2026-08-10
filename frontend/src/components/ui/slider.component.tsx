@@ -20,8 +20,8 @@ export const Slider = ({
 }) => {
   let values: number[];
 
-  if (Array.isArray(value)) values = value;
-  else if (Array.isArray(defaultValue)) values = defaultValue;
+  if (Array.isArray(value)) values = value as number[];
+  else if (Array.isArray(defaultValue)) values = defaultValue as number[];
   else values = [min, max];
 
   return (

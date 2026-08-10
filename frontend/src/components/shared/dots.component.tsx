@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { STAGGER_MS_PER_PX } from "@/config/dots.config";
 import { useDotsGrid } from "@/lib/dots.utils";
 
@@ -12,8 +14,14 @@ const DotsBackground = () => {
     handlePointerLeave,
   } = useDotsGrid();
 
-  const centerX = ((grid.cols - 1) * grid.spacing) / 2;
-  const centerY = ((grid.rows - 1) * grid.spacing) / 2;
+  const [dotsVisible, setDotsVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDotsVisible(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <main
@@ -30,21 +38,21 @@ const DotsBackground = () => {
         aria-hidden="true"
       >
         <g>
-          {grid.dots.map((dot, i) => {
-            const delay =
-              Math.hypot(dot.x - centerX, dot.y - centerY) * STAGGER_MS_PER_PX;
-            return (
-              <circle
-                key={i}
-                ref={(el) => setDotRef(i, el)}
-                className="dot-grid-dot"
-                cx={dot.x}
-                cy={dot.y}
-                r={1.5}
-                style={{ animationDelay: `${delay.toFixed(1)}ms` }}
-              />
-            );
-          })}
+          {dotsVisible &&
+            grid.dots.map((dot, i) => {
+              const delay = (dot.x + dot.y) * STAGGER_MS_PER_PX;
+              return (
+                <circle
+                  key={i}
+                  ref={(el) => setDotRef(i, el)}
+                  className="dot-grid-dot"
+                  cx={dot.x}
+                  cy={dot.y}
+                  r={1.5}
+                  style={{ animationDelay: `${delay.toFixed(1)}ms` }}
+                />
+              );
+            })}
         </g>
         <g ref={linesGroupRef} />
       </svg>

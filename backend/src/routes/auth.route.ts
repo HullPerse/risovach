@@ -23,7 +23,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
     "/register",
     async ({ body, db, jwt, cookie, set, userService, server, request }) => {
       const username = body.username.toUpperCase();
-      const existing = await userService.usernameExists(username);
+      const existing = userService.usernameExists(username);
 
       if (existing) {
         set.status = 409;
@@ -113,7 +113,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
     "/login",
     async ({ body, jwt, cookie, set, userService }) => {
       const username = body.username.toUpperCase();
-      const row = await userService.getByUsername(username);
+      const row = userService.getByUsername(username);
 
       if (!row) {
         set.status = 401;
@@ -143,13 +143,13 @@ const authRoute = new Elysia({ prefix: "/auth" })
     clearSession(cookie.session);
     return { ok: true };
   })
-  .get("/me", async ({ set, user, userService }) => {
+  .get("/me", ({ set, user, userService }) => {
     if (!user) {
       set.status = 401;
       return { error: "Unauthorized" };
     }
 
-    const row = await userService.getById(Number(user.sub));
+    const row = userService.getById(Number(user.sub));
 
     if (!row) {
       set.status = 401;

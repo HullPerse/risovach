@@ -6,7 +6,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { QueryConfig } from "./config/query.config.ts";
-import { router } from "./routes/__root.tsx";
+import { router } from "./routes/index.root.tsx";
 
 const queryClient = new QueryClient(QueryConfig);
 
