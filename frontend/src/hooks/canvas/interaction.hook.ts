@@ -56,6 +56,15 @@ export const useCanvasInteraction = (props: CanvasInteractionProps) => {
     prevAltRef.current = isAltPressed;
   }, [altAdjust, isAltPressed]);
 
+  const pendingMousePosRef = useRef<Point | null>(null);
+  const mouseRafRef = useRef(0);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(mouseRafRef.current);
+    },
+    []
+  );
+
   const endStroke = useCallback(() => {
     const store = useCanvasStore.getState();
     if (store.isDrawing) {
@@ -133,7 +142,18 @@ export const useCanvasInteraction = (props: CanvasInteractionProps) => {
     }
 
     if (!store.isDrawing) {
-      store.setMousePos(canvasPos);
+      pendingMousePosRef.current = canvasPos;
+
+      if (!mouseRafRef.current) {
+        mouseRafRef.current = requestAnimationFrame(() => {
+          mouseRafRef.current = 0;
+
+          const pending = pendingMousePosRef.current;
+          pendingMousePosRef.current = null;
+
+          if (pending) useCanvasStore.getState().setMousePos(pending);
+        });
+      }
       return;
     }
 
@@ -143,7 +163,7 @@ export const useCanvasInteraction = (props: CanvasInteractionProps) => {
   const handleMouseUp = () => drawing.end();
 
   let cursorStroke = "black";
-  if (mousePos) {
+  if (mousePos && props.tool === "eyedropper") {
     const data = eyedropper.samplePixelData(mousePos);
     cursorStroke = data && data[3] > 0 ? "white" : "black";
   }

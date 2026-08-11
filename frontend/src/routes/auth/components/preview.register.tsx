@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import LocationBadge from "@/components/shared/location-badge.component";
 import ImageComponent from "@/components/shared/image.component";
+import LocationBadge from "@/components/shared/location.component";
 import RevealableError from "@/components/shared/reveal.component";
 import { Button } from "@/components/ui/button.component";
 import { Input } from "@/components/ui/input.component";

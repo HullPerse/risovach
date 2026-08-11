@@ -1,4 +1,5 @@
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/index.utils";
@@ -8,11 +9,13 @@ export const WindowComponent = ({
   className,
   childrenClassName,
   label = "МЕНЮ",
+  onBack,
 }: {
   children: ReactNode;
   className?: string;
   childrenClassName?: string;
   label?: string;
+  onBack?: () => void;
 }) => (
   <main
     className={cn(
@@ -22,10 +25,22 @@ export const WindowComponent = ({
   >
     {/* HEADER */}
     <section className="bg-primary border-border flex w-full flex-row items-center justify-center gap-1 border-b-4 p-1 select-none">
-      <div className="absolute left-2 flex gap-1">
-        <div className="border-border bg-error size-3 border-2" />
-        <div className="border-border bg-success size-3 border-2" />
-      </div>
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          title="Назад"
+          aria-label="Назад"
+          className="border-border bg-error absolute left-2 flex size-5 cursor-pointer items-center justify-center border-2 hover:brightness-110 active:brightness-90"
+        >
+          <ArrowLeft className="size-3.5 text-white" />
+        </button>
+      ) : (
+        <div className="absolute left-2 flex gap-1">
+          <div className="border-border bg-error size-3 border-2" />
+          <div className="border-border bg-success size-3 border-2" />
+        </div>
+      )}
 
       <span className="text-sm font-bold">{label}</span>
     </section>

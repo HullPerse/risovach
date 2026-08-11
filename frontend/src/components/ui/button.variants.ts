@@ -17,7 +17,7 @@ export const buttonVariants = cva(
       variant: {
         default: "bg-primary border-border",
         error: "bg-error border-border",
-        ghost: "noShadow border-transparent bg-transparent",
+        ghost: "border-transparent bg-transparent",
         link: "noShadow border-transparent bg-transparent underline-offset-4 shadow-none hover:underline",
         success: "bg-success border-border",
       },
