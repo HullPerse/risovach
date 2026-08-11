@@ -1,17 +1,11 @@
-import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button.component";
-import { requestBrowserGeo } from "@/lib/geo.utils";
-import type { BrowserGeo } from "@/lib/geo.utils";
+import type { GeoState } from "@/hooks/geo.hook";
 import { cn } from "@/lib/index.utils";
 
+import { Checkbox } from "../ui/checkbox.component";
 import Flag from "./flag.component";
-
-interface IpGeoResponse {
-  city?: string | null;
-  country_code?: string | null;
-}
 
 const displayNames = new Intl.DisplayNames([navigator.language], {
   type: "region",
@@ -21,76 +15,30 @@ const countryName = (code: string): string => displayNames.of(code) ?? code;
 
 const LocationBadge = ({
   className,
-  onLocation,
+  geo,
+  onRetry,
+  onSuppressLocationChange,
+  suppressLocation,
 }: {
   className?: string;
-  onLocation?: (geo: BrowserGeo | null) => void;
+  geo: GeoState;
+  onRetry: () => void;
+  onSuppressLocationChange: (suppressed: boolean) => void;
+  suppressLocation: boolean;
 }) => {
-  const [failed, setFailed] = useState(false);
-  const [geo, setGeo] = useState<BrowserGeo | null>(null);
-  const [loading, setLoading] = useState(true);
+  if (geo.status === "loading" && !suppressLocation) {
+    return (
+      <div className="border-border flex h-8 w-full flex-row items-center gap-1 border-2 p-0.5">
+        <span className="text-muted text-xs">Определение...</span>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const detectByIp = async () => {
-      try {
-        const response = await fetch("https://ipapi.co/json/", {
-          signal: AbortSignal.timeout(3000),
-        });
-        const data = (await response.json()) as IpGeoResponse;
-        const city = data.city ?? null;
-        const countryCode = data.country_code?.toUpperCase() ?? null;
-        const detected: BrowserGeo | null =
-          countryCode || city ? { city, countryCode } : null;
-
-        if (cancelled) return;
-
-        setGeo(detected);
-        onLocation?.(detected);
-      } catch {
-        if (!cancelled) {
-          setGeo(null);
-          onLocation?.(null);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    detectByIp();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [onLocation]);
-
-  const handleEnable = async () => {
-    setLoading(true);
-    setFailed(false);
-    const browserGeo = await requestBrowserGeo();
-
-    if (browserGeo) {
-      setGeo(browserGeo);
-      onLocation?.(browserGeo);
-    } else {
-      setFailed(true);
-    }
-    setLoading(false);
-  };
+  const name = geo.countryCode ? countryName(geo.countryCode) : null;
 
   let content: ReactNode;
 
-  if (loading) {
-    content = (
-      <>
-        <div className="bg-muted h-3 w-3 animate-pulse" />
-        <div className="bg-muted h-3 w-24 animate-pulse" />
-      </>
-    );
-  } else if (geo) {
-    const name = geo.countryCode ? countryName(geo.countryCode) : null;
-
+  if (geo.status === "detected" && !suppressLocation) {
     content = (
       <>
         {geo.countryCode ? (
@@ -102,22 +50,23 @@ const LocationBadge = ({
         ) : null}
       </>
     );
-  } else if (failed) {
-    content = (
-      <span className="text-muted text-xs">Местоположение недоступно</span>
-    );
   } else {
     content = (
       <>
-        <span className="text-muted text-xs">Определить страну?</span>
         <Button
-          type="button"
-          size="sm"
-          variant="default"
-          onClick={handleEnable}
+          disabled={suppressLocation}
+          aria-label="Найти локацию"
+          className="text-text border-border boxShadowSmall bg-muted flex h-6 w-10 flex-row items-center justify-center border-2 text-xl font-extrabold"
+          onClick={onRetry}
         >
-          Разрешить
+          ?
         </Button>
+        <span className="text-xs font-bold">
+          {suppressLocation ? "Не указано" : "Неизвестно"}
+        </span>
+        {suppressLocation ? null : (
+          <span className="text-muted text-xs">Нажмите для повтора</span>
+        )}
       </>
     );
   }
@@ -125,11 +74,16 @@ const LocationBadge = ({
   return (
     <div
       className={cn(
-        "border-border boxShadowSmall flex w-full flex-row items-center gap-2 border-2 px-2 py-1",
+        "border-border flex h-8 w-full flex-row items-center gap-1 border-2 p-0.5",
         className
       )}
     >
       {content}
+      <Checkbox
+        className="ml-auto"
+        checked={suppressLocation}
+        onCheckedChange={onSuppressLocationChange}
+      />
     </div>
   );
 };

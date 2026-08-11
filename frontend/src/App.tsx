@@ -1,8 +1,10 @@
 import { Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
 import DotsBackground from "@/components/shared/dots.component";
 import { useUserStore } from "@/stores/user.store";
+
+import { BigLoader } from "./components/shared/loader.component";
 
 const App = () => {
   const navigate = useNavigate();
@@ -35,9 +37,11 @@ const App = () => {
     >
       <DotsBackground />
 
-      <div className="pointer-events-none relative z-10 h-full w-full">
-        <Outlet />
-      </div>
+      <Suspense fallback={<BigLoader />}>
+        <div className="pointer-events-none relative z-10 h-full w-full">
+          <Outlet />
+        </div>
+      </Suspense>
     </main>
   );
 };

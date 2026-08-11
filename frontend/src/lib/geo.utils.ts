@@ -22,6 +22,7 @@ interface Deferred<T> {
 const GEO_TIMEOUT_MS = 5000;
 const REVERSE_GEOCODING_URL =
   "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10";
+const systemDateFormatter = new Intl.DateTimeFormat();
 
 const deferred = <T>(): Deferred<T> => {
   let reject!: (reason?: unknown) => void;
@@ -58,6 +59,7 @@ const reverseGeocode = async (
     const response = await fetch(
       `${REVERSE_GEOCODING_URL}&lat=${latitude}&lon=${longitude}`,
       {
+        headers: { "User-Agent": "risovach/frontend" },
         signal: AbortSignal.timeout(GEO_TIMEOUT_MS),
       }
     );
@@ -86,12 +88,6 @@ const reverseGeocode = async (
   }
 };
 
-const waitForTimeout = (milliseconds: number): Promise<null> => {
-  const { promise, resolve } = deferred<null>();
-  setTimeout(resolve, milliseconds, null);
-  return promise;
-};
-
 export const requestBrowserGeo = async (): Promise<BrowserGeo | null> => {
   try {
     const {
@@ -104,7 +100,42 @@ export const requestBrowserGeo = async (): Promise<BrowserGeo | null> => {
   }
 };
 
-export const requestBrowserGeoNonBlocking = (
-  timeoutMs = 3000
-): Promise<BrowserGeo | null> =>
-  Promise.race([requestBrowserGeo(), waitForTimeout(timeoutMs)]);
+export const detectGeoByIp = async (): Promise<BrowserGeo | null> => {
+  try {
+    const response = await fetch("https://ipapi.co/json/", {
+      signal: AbortSignal.timeout(3000),
+    });
+    const data = (await response.json()) as {
+      city?: string;
+      country_code?: string;
+    };
+    const city = data.city ?? null;
+    const countryCode = data.country_code?.toUpperCase() ?? null;
+    return countryCode || city ? { city, countryCode } : null;
+  } catch {
+    return null;
+  }
+};
+
+export const detectGeoByLocale = (): BrowserGeo | null => {
+  try {
+    const { locale } = systemDateFormatter.resolvedOptions();
+    const [, region] = locale.split("-");
+    const countryCode = region ? region.toUpperCase() : null;
+    return countryCode ? { city: null, countryCode } : null;
+  } catch {
+    return null;
+  }
+};
+
+export const detectGeo = async (
+  preferBrowser = false
+): Promise<BrowserGeo | null> => {
+  const locale = detectGeoByLocale();
+  if (locale) return locale;
+
+  const ip = await detectGeoByIp();
+  if (ip) return ip;
+  if (preferBrowser) return requestBrowserGeo();
+  return null;
+};

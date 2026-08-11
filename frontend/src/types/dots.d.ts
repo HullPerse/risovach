@@ -8,21 +8,19 @@ export interface GridInfo {
   cols: number;
   rows: number;
   spacing: number;
+  sx: number;
+  sy: number;
 }
 
-export interface LineNode {
+export interface LineData {
   born: number;
-  el: SVGLineElement;
   x1: number;
-  y1: number;
   x2: number;
+  y1: number;
   y2: number;
 }
 
-export interface DotGridProps {
-  dots: GridDot[];
-  cols: number;
-  rows: number;
-  spacing: number;
-  setDotRef: (index: number, el: SVGCircleElement | null) => void;
-}
+export type GridState = {
+  grid: GridInfo;
+  skipAnimation: boolean;
+};

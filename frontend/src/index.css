@@ -96,62 +96,6 @@
   box-shadow: 0px 0px 0px 0px transparent;
 }
 
-/* Dots background */
-@property --proximity {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-
-.dot-grid-dot {
-  --dot-base: color-mix(in srgb, var(--color-text) 50%, transparent);
-  fill: color-mix(in srgb,
-      var(--color-primary) calc(var(--proximity) * 100%),
-      var(--dot-base));
-  opacity: 0;
-  transform: scale(calc(1 + var(--proximity)));
-  transform-box: fill-box;
-  transform-origin: center;
-  transition:
-    --proximity 0.15s ease,
-    opacity 0.4s ease;
-  pointer-events: none;
-  animation: dot-grid-appear 0.6s ease forwards;
-}
-
-@keyframes dot-grid-appear {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.dot-grid-line {
-  stroke: var(--color-primary);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  opacity: 1;
-  transition: opacity 0.6s ease;
-  animation: dot-grid-draw 0.25s ease forwards;
-}
-
-.dot-grid-line.is-fading {
-  opacity: 0;
-}
-
-@keyframes dot-grid-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-
-
 @keyframes loader-dots {
 
   0%,

@@ -1,13 +1,12 @@
 import { useState } from "react";
 
-import ImageComponent from "@/components/shared/image.component";
 import LocationBadge from "@/components/shared/location-badge.component";
+import ImageComponent from "@/components/shared/image.component";
 import RevealableError from "@/components/shared/reveal.component";
 import { Button } from "@/components/ui/button.component";
 import { Input } from "@/components/ui/input.component";
+import { useGeoLocation } from "@/hooks/geo.hook";
 import { useRegister } from "@/hooks/user/auth.hook";
-import { requestBrowserGeoNonBlocking } from "@/lib/geo.utils";
-import type { BrowserGeo } from "@/lib/geo.utils";
 import { registerSchema } from "@/lib/zod.utils";
 
 const PreviewRegister = ({
@@ -26,11 +25,12 @@ const PreviewRegister = ({
   setConfirmPassword: (value: string) => void;
 }) => {
   const register = useRegister();
+  const { forceUnknown, retry, state: geoState } = useGeoLocation();
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [detectedGeo, setDetectedGeo] = useState<BrowserGeo | null>(null);
+  const [suppressLocation, setSuppressLocation] = useState(false);
   const avatarUrl = avatarFile ? URL.createObjectURL(avatarFile) : null;
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     setValidationError(null);
     const result = registerSchema.safeParse({
       avatar: avatarFile,
@@ -46,13 +46,13 @@ const PreviewRegister = ({
     }
     const { username: name, password: pass, avatar } = result.data;
 
-    const geo = detectedGeo ?? (await requestBrowserGeoNonBlocking());
-
     register.mutate({
       avatar,
       password: pass,
       username: name,
-      ...(geo ? { city: geo.city, country: geo.countryCode } : {}),
+      ...(!suppressLocation && geoState.status === "detected"
+        ? { city: geoState.city, country: geoState.countryCode }
+        : {}),
     });
   };
 
@@ -87,15 +87,21 @@ const PreviewRegister = ({
         </div>
         <div className="flex flex-col gap-1">
           <span>@{username}</span>
-          <span className="flex flex-row gap-1">
-            <div className="bg-muted h-1 flex-1 animate-pulse" />
-            <div className="bg-muted h-1 w-8 animate-pulse" />
-          </span>
-          <div className="bg-muted h-1 w-full animate-pulse" />
+          <div className="bg-muted h-1 w-full" />
         </div>
       </section>
 
-      <LocationBadge onLocation={setDetectedGeo} />
+      <LocationBadge
+        geo={geoState}
+        suppressLocation={suppressLocation}
+        onRetry={() => {
+          retry();
+        }}
+        onSuppressLocationChange={(suppressed) => {
+          setSuppressLocation(suppressed);
+          if (suppressed) forceUnknown();
+        }}
+      />
 
       <section className="flex w-full flex-col leading-tight">
         <label

@@ -2,13 +2,12 @@ import path from "node:path";
 
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 import compression from "vite-plugin-compression2";
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, import.meta.dirname, "");
-
+export default defineConfig(() => {
   return {
     build: {
       sourcemap: false,
@@ -16,11 +15,11 @@ export default defineConfig(({ mode }) => {
 
     clearScreen: false,
 
-    define: {
-      __APP_MODE__: JSON.stringify(env.MODE || "PROD"),
-    },
-
     plugins: [
+      tanstackRouter({
+        target: "react",
+        virtualRouteConfig: "@/routes/index.root.tsx",
+      }),
       react(),
       tailwindcss(),
       compression({

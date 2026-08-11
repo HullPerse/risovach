@@ -2,38 +2,36 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  lazyRouteComponent,
   redirect,
 } from "@tanstack/react-router";
 import { lazy } from "react";
 
 import { bigError } from "@/components/shared/error.component";
-import { BigLoader } from "@/components/shared/loader.component";
 import { initializeUserStore, useUserStore } from "@/stores/user.store";
 
-const AuthPage = lazyRouteComponent(() => import("./auth.route"));
-const MenuPage = lazyRouteComponent(() => import("./menu.route"));
-
-const requireAuth = () => async () => {
+const requireAuth = async () => {
   await initializeUserStore();
 
-  if (useUserStore.getState().user) {
-    return;
+  if (!useUserStore.getState().user) {
+    throw redirect({ replace: true, to: "/auth" });
   }
-  throw redirect({ replace: true, to: "/auth" });
 };
 
 const App = lazy(() => import("@/App"));
+const AuthPage = lazy(() => import("./auth.route"));
+const MenuPage = lazy(() => import("./menu.route"));
 
 const rootRoute = createRootRoute({
   component: App,
 });
 
 const indexRoute = createRoute({
-  beforeLoad: requireAuth(),
-  component: App,
   getParentRoute: () => rootRoute,
   path: "/",
+  beforeLoad: async () => {
+    await requireAuth();
+    throw redirect({ replace: true, to: "/menu" });
+  },
 });
 
 const errorRoute = createRoute({
@@ -43,16 +41,16 @@ const errorRoute = createRoute({
 });
 
 const authRoute = createRoute({
-  component: AuthPage,
   getParentRoute: () => rootRoute,
   path: "/auth",
+  component: AuthPage,
 });
+
 const menuRoute = createRoute({
-  beforeLoad: requireAuth(),
-  component: MenuPage,
   getParentRoute: () => rootRoute,
   path: "/menu",
-  pendingComponent: BigLoader,
+  beforeLoad: requireAuth,
+  component: MenuPage,
 });
 
 const routerTree = rootRoute.addChildren([
