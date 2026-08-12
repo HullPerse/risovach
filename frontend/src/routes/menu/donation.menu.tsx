@@ -1,5 +1,5 @@
-const DonationMenu = () => {
-  return <main>Donation menu</main>;
-};
+import { EmptyError } from "@/components/shared/error.component";
+
+const DonationMenu = () => EmptyError();
 
 export default DonationMenu;

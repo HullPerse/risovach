@@ -3,4 +3,11 @@ export type MenuButton = {
   label: string;
 };
 
-export type MenuView = "main" | "settings" | "donation" | "chat";
+export type MenuView =
+  | "main"
+  | "settings"
+  | "donation"
+  | "chat"
+  | "profile"
+  | "create"
+  | "find";

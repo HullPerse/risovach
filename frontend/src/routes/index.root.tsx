@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { lazy } from "react";
 
-import { bigError } from "@/components/shared/error.component";
+import { BigError } from "@/components/shared/error.component";
 import { initializeUserStore, useUserStore } from "@/stores/user.store";
 
 const requireAuth = async () => {
@@ -35,7 +35,7 @@ const indexRoute = createRoute({
 });
 
 const errorRoute = createRoute({
-  component: bigError,
+  component: BigError,
   getParentRoute: () => rootRoute,
   path: "/error",
 });

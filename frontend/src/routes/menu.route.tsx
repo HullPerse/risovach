@@ -2,6 +2,7 @@ import type { VariantProps } from "class-variance-authority";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { UserApi } from "@/api/user.api";
+import { EmptyError } from "@/components/shared/error.component";
 import ImageComponent from "@/components/shared/image.component";
 import { SmallLoader } from "@/components/shared/loader.component";
 import { WindowComponent } from "@/components/shared/window.component";
@@ -14,6 +15,7 @@ import { useUserStore } from "@/stores/user.store";
 import type { MenuView } from "@/types/menu";
 
 import ChatMenu from "./menu/chat.menu";
+import CreateMenu from "./menu/create.menu";
 import DonationMenu from "./menu/donation.menu";
 import SettingsMenu from "./menu/settings.menu";
 
@@ -35,6 +37,9 @@ const VIEWS: Record<
   settings: { label: "ПАРАМЕТРЫ", component: SettingsMenu },
   donation: { label: "ПОДПИСКА", component: DonationMenu },
   chat: { label: "ЧАТ", component: ChatMenu },
+  profile: { label: "ПРОФИЛЬ", component: EmptyError },
+  create: { label: "СОЗДАТЬ ЛОББИ", component: CreateMenu },
+  find: { label: "НАЙТИ ЛОББИ", component: EmptyError },
 };
 
 const MenuPage = () => {
@@ -42,6 +47,7 @@ const MenuPage = () => {
   const { user } = useUserStore();
   const activeView = useMenuStore((state) => state.activeView);
   const setActiveView = useMenuStore((state) => state.setActiveView);
+  const toggleView = useMenuStore((state) => state.toggleView);
 
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +59,6 @@ const MenuPage = () => {
 
   if (activeView !== "main") {
     const view = VIEWS[activeView];
-    const Component = view.component;
 
     return (
       <WindowComponent
@@ -62,7 +67,7 @@ const MenuPage = () => {
         className="absolute top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2"
         childrenClassName="flex w-full py-2"
       >
-        <Component />
+        <view.component />
       </WindowComponent>
     );
   }
@@ -79,6 +84,9 @@ const MenuPage = () => {
           variant={tab.variant}
           className={cn("border-border relative w-full")}
           onClick={() => {
+            if (tab.value === "profile") return toggleView("profile");
+            if (tab.value === "create") return toggleView("create");
+            if (tab.value === "find") return toggleView("find");
             if (tab.value === "leave") logout.mutate();
           }}
         >
