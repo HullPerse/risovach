@@ -1,4 +1,4 @@
-import type { AuthCookie, UserCache } from "@/types/auth";
+import type { AuthCookie, UserCache } from "@/types/user";
 
 export const usernameCache: UserCache = new Map();
 

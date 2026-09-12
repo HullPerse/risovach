@@ -1,8 +1,8 @@
 import { Elysia } from "elysia";
 
-import Logger from "@/lib/logger.utils";
+import { createAppLogger } from "@/lib/logger.utils";
 
-const logger = new Logger("SYSTEM");
+const logger = createAppLogger().module("SYSTEM");
 
 const errorPlugin = new Elysia({ name: "error-handler" }).onError(
   { as: "global" },

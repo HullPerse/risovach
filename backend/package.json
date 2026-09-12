@@ -4,11 +4,15 @@
   "type": "module",
   "module": "src/index.server.js",
   "scripts": {
-    "dev": "bun run --watch src/index.server.ts",
-    "test": "bun test",
+    "dev": "concurrently -k -n api,studio \"bun run --watch src/index.server.ts\" \"bunx drizzle-kit studio --host 127.0.0.1\"",
+    "test": "NODE_ENV=test bunx drizzle-kit push --force && NODE_ENV=test bun test",
+    "test:ci": "NODE_ENV=test bunx drizzle-kit push --force && NODE_ENV=test bun test --coverage --retry 2 --randomize --bail=1",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --type-aware --deny-warnings src/",
-    "db:clear": "rm -f data/db.sqlite data/db.sqlite-wal data/db.sqlite-shm",
+    "lint": "oxlint --type-aware --deny-warnings -A unicorn/filename-case src/",
+    "db:migrate": "bunx drizzle-kit push",
+    "db:seed": "bun run scripts/seed.ts",
+    "db:clear": "bun run scripts/clear.db.ts",
+    "db:clone:full": "bun run scripts/clone.db.ts",
     "check": "ultracite check",
     "fix": "ultracite fix"
   },
@@ -16,17 +20,18 @@
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/jwt": "^1.4.2",
     "drizzle-orm": "^0.45.2",
-    "elysia": "latest",
-    "picocolors": "^1.1.1"
+    "elysia": "^1.4.30",
+    "hp_logger": "^1.1.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.14",
+    "@types/bun": "^1.4.2",
     "better-sqlite3": "^13.0.3",
-    "bun-types": "latest",
+    "bun-types": "1.4.2",
+    "concurrently": "^10.0.5",
     "drizzle-kit": "^0.31.10",
-    "oxfmt": "^0.62.0",
-    "oxlint": "^1.77.0",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "ultracite": "7.10.2"
+    "ultracite": "7.11.1"
   }
 }

@@ -1,4 +1,5 @@
-import Logger from "@/lib/logger.utils";
+import { attemptSync } from "@/lib/attempt.utils";
+import { createAppLogger } from "@/lib/logger.utils";
 import {
   getAppliedMigrations,
   markApplied,
@@ -7,7 +8,7 @@ import {
 
 import { rawDb } from "./index.db";
 
-const logger = new Logger("MIGRATIONS");
+const logger = createAppLogger().module("MIGRATIONS");
 
 export default function migrate() {
   const applied = getAppliedMigrations();
@@ -23,25 +24,25 @@ export default function migrate() {
     logger.info(`Applying ${hash}: ${description}`);
 
     for (const stmt of sql) {
-      try {
-        rawDb.run(stmt);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
+      const [, error] = attemptSync(() => rawDb.run(stmt));
 
-        const ignorablePatterns = [
-          "duplicate column",
-          "already exists",
-          "no such column",
-        ];
+      if (!error) continue;
 
-        if (ignorablePatterns.some((pattern) => message.includes(pattern))) {
-          logger.debug(`Skipped: ${message}`);
-          continue;
-        }
+      const { message } = error;
 
-        logger.error(`Failed: ${message}`);
-        throw error;
+      const ignorablePatterns = [
+        "duplicate column",
+        "already exists",
+        "no such column",
+      ];
+
+      if (ignorablePatterns.some((pattern) => message.includes(pattern))) {
+        logger.debug(`Skipped: ${message}`);
+        continue;
       }
+
+      logger.error(`Failed: ${message}`);
+      throw error;
     }
 
     markApplied(hash);

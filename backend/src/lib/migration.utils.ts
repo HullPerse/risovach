@@ -1,4 +1,5 @@
 import { rawDb } from "@/db/index.db";
+import { attemptSync } from "@/lib/attempt.utils";
 import type { Migration } from "@/types/server";
 
 export const migrations: Record<string, Migration> = {
@@ -32,21 +33,22 @@ export const migrations: Record<string, Migration> = {
 };
 
 export const getAppliedMigrations = (): Set<string> => {
-  try {
-    const rows = rawDb.query("SELECT hash FROM __drizzle_migrations").all() as {
-      hash: string;
-    }[];
+  const [rows, error] = attemptSync(
+    () =>
+      rawDb.query("SELECT hash FROM __drizzle_migrations").all() as {
+        hash: string;
+      }[]
+  );
 
-    return new Set(rows.map((row) => row.hash));
-  } catch {
-    rawDb.run(`
+  if (!error) return new Set(rows.map((row) => row.hash));
+
+  rawDb.run(`
        CREATE TABLE IF NOT EXISTS __drizzle_migrations (
          hash TEXT PRIMARY KEY,
          created_at INTEGER NOT NULL
        );
      `);
-    return new Set();
-  }
+  return new Set();
 };
 
 export const markApplied = (hash: string) => {

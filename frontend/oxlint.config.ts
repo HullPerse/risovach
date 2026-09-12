@@ -1,19 +1,37 @@
 import { defineConfig } from "oxlint";
 import core from "ultracite/oxlint/core";
-import jsPlugins from "ultracite/oxlint/js-plugins";
 import react from "ultracite/oxlint/react";
 import tanstack from "ultracite/oxlint/tanstack";
-import tanstackJsPlugins from "ultracite/oxlint/tanstack/js-plugins";
 
 export default defineConfig({
-  extends: [core, react, tanstack, jsPlugins, tanstackJsPlugins],
+  extends: [
+    core,
+    react,
+    tanstack,
+  ],
   ignorePatterns: core.ignorePatterns,
+  overrides: [
+    {
+      files: ["scripts/**"],
+      rules: {
+        "no-console": "off",
+      },
+    },
+  ],
   options: {
     typeAware: true,
     typeCheck: true,
   },
+  // The compatibility overrides intentionally follow the existing project style.
+  // oxlint-disable-next-line sort-keys
   rules: {
+    complexity: "warn",
+    "func-style": "off",
+    "react/function-component-definition": "off",
+    "unicorn/filename-case": "off",
+    "unicorn/throw-new-error": "off",
     curly: "off",
+    "no-console": ["warn", { allow: ["error", "warn"] }],
     "no-else-return": "off",
     "typescript/await-thenable": "error",
     "typescript/consistent-return": "warn",

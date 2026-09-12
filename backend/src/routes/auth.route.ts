@@ -1,19 +1,20 @@
 import { Elysia, t } from "elysia";
 
 import * as schema from "@/db/schema.db";
+import { attempt } from "@/lib/attempt.utils";
 import { clearSession, setSession, signToken } from "@/lib/auth.utils";
+import { resolveClientIp } from "@/lib/geo.utils";
 import { processAvatar } from "@/lib/images.utils";
-import { nowIso, extractClientIp, isPrivateIp, publicUser } from "@/lib/index.utils";
-import Logger from "@/lib/logger.utils";
+import { nowIso, publicUser } from "@/lib/index.utils";
+import { createAppLogger } from "@/lib/logger.utils";
 import { broadcast } from "@/lib/websocket.utils";
 import {
   authPlugin,
   databasePlugin,
   servicesPlugin,
 } from "@/plugins/index.plugin";
-import type { ProcessedAvatar } from "@/types/auth";
 
-const logger = new Logger("AUTH");
+const logger = createAppLogger().module("AUTH");
 
 const authRoute = new Elysia({ prefix: "/auth" })
   .use(databasePlugin)
@@ -21,7 +22,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
   .use(authPlugin)
   .post(
     "/register",
-    async ({ body, db, jwt, cookie, set, userService, server, request }) => {
+    async ({ body, db, jwt, cookie, set, userService, geoService, server, request }) => {
       const username = body.username.toUpperCase();
       const existing = userService.usernameExists(username);
 
@@ -30,45 +31,14 @@ const authRoute = new Elysia({ prefix: "/auth" })
         return { error: "Username already exists" };
       }
 
-      let ip: string | undefined;
+      const ip = resolveClientIp(server, request);
+      const geo = await geoService.resolve(ip, body, () =>
+        logger.warn("Failed to resolve geo")
+      );
 
-      if (server) ip = server.requestIP(request)?.address ?? undefined;
-      ip ??= extractClientIp(request);
+      const [avatar, avatarError] = await attempt(processAvatar(body.avatar));
 
-      const geo: {
-        country: string | null;
-        city: string | null;
-      } = {
-        city: null,
-        country: null,
-      };
-
-      if (ip && !isPrivateIp(ip)) {
-        try {
-          const res = await fetch(`https://ipapi.co/${ip}/json/`, {
-            signal: AbortSignal.timeout(3000),
-          });
-          const data = (await res.json()) as {
-            city?: string;
-            country_code?: string;
-          };
-          geo.country = data.country_code?.toUpperCase() ?? null;
-          geo.city = data.city ?? null;
-        } catch {
-          logger.warn(`Failed to resolve geo for ${ip}`);
-        }
-      }
-
-      if (geo.country === null && geo.city === null) {
-        geo.country = body.country ?? null;
-        geo.city = body.city ?? null;
-      }
-
-      let avatar: ProcessedAvatar;
-
-      try {
-        avatar = await processAvatar(body.avatar);
-      } catch {
+      if (avatarError) {
         set.status = 400;
         return { error: "Failed to process avatar" };
       }
@@ -96,7 +66,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
       setSession(cookie.session, token);
 
       broadcast("users", "create", String(row.id));
-      logger.setAuthor(username).success("registered");
+      logger.success(`${username} registered`);
       return { user: publicUser(row) };
     },
     {
@@ -129,7 +99,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
       const token = await signToken(jwt, row.id);
       setSession(cookie.session, token);
 
-      logger.setAuthor(row.username).success("logged in");
+      logger.success(`${row.username} logged in`);
       return { user: publicUser(row) };
     },
     {

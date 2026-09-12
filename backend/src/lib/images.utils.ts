@@ -1,5 +1,6 @@
+import { attemptSync } from "@/lib/attempt.utils";
 import { config } from "@/server.config";
-import type { ProcessedAvatar } from "@/types/auth";
+import type { ProcessedAvatar } from "@/types/user";
 
 export const processAvatar = async (file: File): Promise<ProcessedAvatar> => {
   if (file.size > config.avatarMaxBytes) {
@@ -12,13 +13,9 @@ export const processAvatar = async (file: File): Promise<ProcessedAvatar> => {
 
   const source = Buffer.from(await file.arrayBuffer());
 
-  let image: Bun.Image;
+  const [image, decodeError] = attemptSync(() => new Bun.Image(source));
 
-  try {
-    image = new Bun.Image(source);
-  } catch {
-    throw new Error("Could not decode image");
-  }
+  if (decodeError) throw new Error("Could not decode image");
 
   const full = Buffer.from(
     await image

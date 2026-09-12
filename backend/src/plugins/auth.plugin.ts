@@ -3,7 +3,7 @@ import { Elysia } from "elysia";
 
 import { resolveUsername } from "@/lib/auth.utils";
 import { config } from "@/server.config";
-import type { JwtUser } from "@/types/auth";
+import type { JwtUser } from "@/types/user";
 
 const authPlugin = new Elysia({ name: "auth" })
   .use(
