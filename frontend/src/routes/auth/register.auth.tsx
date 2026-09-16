@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { JSX } from "react";
+import type { ReactNode } from "react";
 
 import CanvasRegister from "./components/canvas.register";
 import DataRegister from "./components/data.register";
@@ -24,7 +24,7 @@ export const RegisterAuth = ({
   };
 
   const getComponent = () => {
-    const tabMap = {
+    const tabMap: Record<string, ReactNode> = {
       canvas: (
         <CanvasRegister setCurrentTab={setCurrentTab} onCreate={handleCreate} />
       ),
@@ -48,7 +48,7 @@ export const RegisterAuth = ({
           setConfirmPassword={setConfirmPassword}
         />
       ),
-    } as Record<string, JSX.Element>;
+    };
 
     return tabMap[currentTab];
   };

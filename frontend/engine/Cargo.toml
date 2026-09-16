@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = ["core", "raster", "brush", "history", "format", "editor", "wasm"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+drawing-core = { path = "core" }
+drawing-raster = { path = "raster" }
+drawing-brush = { path = "brush" }
+drawing-history = { path = "history" }
+drawing-format = { path = "format" }
+drawing-editor = { path = "editor" }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3

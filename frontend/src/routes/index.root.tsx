@@ -20,6 +20,7 @@ const requireAuth = async () => {
 const App = lazy(() => import("@/App"));
 const AuthPage = lazy(() => import("./auth.route"));
 const MenuPage = lazy(() => import("./menu.route"));
+const TestPage = lazy(() => import("./test.route"));
 
 const rootRoute = createRootRoute({
   component: App,
@@ -53,10 +54,17 @@ const menuRoute = createRoute({
   component: MenuPage,
 });
 
+const testRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/test",
+  component: TestPage,
+});
+
 const routerTree = rootRoute.addChildren([
   indexRoute,
   authRoute,
   menuRoute,
+  testRoute,
   errorRoute,
 ]);
 

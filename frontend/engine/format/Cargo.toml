@@ -1,0 +1,10 @@
+[package]
+name = "drawing-format"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+drawing-core = { workspace = true }
+miniz_oxide = "0.8"

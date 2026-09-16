@@ -19,10 +19,8 @@ export const SmallLoader = () => (
 
 export const WindowLoader = () => <main>Hello Loader</main>;
 
-export const BigLoader = () => {
-  return (
-    <main className="bg-primary text-card absolute flex h-screen w-screen flex-col items-center justify-center font-extrabold">
-      <Box className="size-28 animate-spin" />
-    </main>
-  );
-};
+export const BigLoader = () => (
+  <main className="bg-primary text-card absolute flex h-screen w-screen flex-col items-center justify-center font-extrabold">
+    <Box className="size-28 animate-spin" />
+  </main>
+);

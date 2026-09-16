@@ -9,7 +9,9 @@ export default defineConfig({
     react,
     tanstack,
   ],
-  ignorePatterns: core.ignorePatterns,
+  // src/wasm это сгенерированная обвязка wasm-bindgen: править и проверять
+  // её нечего, она перезаписывается на каждой сборке движка.
+  ignorePatterns: [...(core.ignorePatterns ?? []), "src/wasm/**"],
   overrides: [
     {
       files: ["scripts/**"],

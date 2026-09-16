@@ -14,6 +14,11 @@ const DOT_FADE_MS = 300;
 const GRID_HOLD_MS = 250;
 const LINE_WIDTH = 3;
 
+/** Cleanup for the paths where an effect has nothing to undo. */
+const noCleanup = (): void => {
+  // nothing to undo yet
+};
+
 const DotsBackground = () => {
   const {
     containerRef,
@@ -53,10 +58,16 @@ const DotsBackground = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !visible) return;
+
+    if (!canvas || !visible) {
+      return noCleanup;
+    }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+
+    if (!ctx) {
+      return noCleanup;
+    }
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -78,10 +89,16 @@ const DotsBackground = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !visible) return;
+
+    if (!canvas || !visible) {
+      return noCleanup;
+    }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+
+    if (!ctx) {
+      return noCleanup;
+    }
 
     startTimeRef.current = performance.now() + GRID_HOLD_MS;
     animateAtRef.current = startTimeRef.current;

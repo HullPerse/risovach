@@ -13,40 +13,23 @@ interface NominatimResponse {
   };
 }
 
-interface Deferred<T> {
-  promise: Promise<T>;
-  reject: (reason?: unknown) => void;
-  resolve: (value: T) => void;
-}
-
 const GEO_TIMEOUT_MS = 5000;
 const REVERSE_GEOCODING_URL =
   "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10";
 const systemDateFormatter = new Intl.DateTimeFormat();
 
-const deferred = <T>(): Deferred<T> => {
-  let reject!: (reason?: unknown) => void;
-  let resolve!: (value: T) => void;
-
-  const promise = new Promise<T>((_resolve, _reject) => {
-    reject = _reject;
-    resolve = _resolve;
-  });
-
-  return { promise, reject, resolve };
-};
-
 const getPosition = (): Promise<GeolocationPosition> => {
-  const { promise, reject, resolve } = deferred<GeolocationPosition>();
-
-  if ("geolocation" in navigator) {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: false,
-      timeout: GEO_TIMEOUT_MS,
-    });
-  } else {
-    reject(new Error("Geolocation is not supported"));
+  if (!("geolocation" in navigator)) {
+    return Promise.reject(new Error("Geolocation is not supported"));
   }
+
+  const { promise, reject, resolve } =
+    Promise.withResolvers<GeolocationPosition>();
+
+  navigator.geolocation.getCurrentPosition(resolve, reject, {
+    enableHighAccuracy: false,
+    timeout: GEO_TIMEOUT_MS,
+  });
 
   return promise;
 };

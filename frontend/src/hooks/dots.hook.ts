@@ -19,6 +19,11 @@ import {
 } from "@/lib/dots.utils";
 import type { GridState, LineData } from "@/types/dots";
 
+/** Cleanup for the paths where an effect has nothing to undo. */
+const noCleanup = (): void => {
+  // nothing to undo yet
+};
+
 export const useDotsGrid = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const containerRectRef = useRef<DOMRect | null>(null);
@@ -44,7 +49,11 @@ export const useDotsGrid = () => {
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+
+    // Nothing to measure before the container exists.
+    if (!container) {
+      return noCleanup;
+    }
 
     const rebuild = () => {
       const rect = container.getBoundingClientRect();

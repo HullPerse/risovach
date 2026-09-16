@@ -1,5 +1,3 @@
-const CreateMenu = () => {
-  return <main>123</main>;
-};
+const CreateMenu = () => <main>123</main>;
 
 export default CreateMenu;

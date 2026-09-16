@@ -1,5 +1,5 @@
-import { clsx } from "clsx";
-import type { ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+export { cn } from "cn";
 
-export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
+export const openLink = (link: string) => {
+  return window.open(link, "_blank", "noopener,noreferrer");
+};

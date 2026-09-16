@@ -15,3 +15,15 @@ export interface UserStore {
   subscribeToUserUpdates: () => void;
   unsubscribeFromUserUpdates: () => void;
 }
+
+export interface MenuStore {
+  activeView: MenuView;
+  setActiveView: (view: MenuView) => void;
+  toggleView: (view: MenuView) => void;
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  login: () => void;
+  logout: () => void;
+}

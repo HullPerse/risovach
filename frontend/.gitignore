@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+
+# `bun run wasm:build`.
+src/wasm
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -140,3 +140,6 @@ backend/elysia
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+frontend/src/wasm
+.docs/

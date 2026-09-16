@@ -1,0 +1,14 @@
+[package]
+name = "drawing-editor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+drawing-brush = { workspace = true }
+drawing-core = { workspace = true }
+drawing-format = { workspace = true }
+drawing-history = { workspace = true }
+drawing-raster = { workspace = true }
+serde = { version = "1", features = ["derive"] }

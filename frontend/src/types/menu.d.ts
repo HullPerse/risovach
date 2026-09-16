@@ -1,7 +1,7 @@
-export type MenuButton = {
+export interface MenuButton {
   value: string;
   label: string;
-};
+}
 
 export type MenuView =
   | "main"
@@ -11,3 +11,14 @@ export type MenuView =
   | "profile"
   | "create"
   | "find";
+
+export type MenuTabs = {
+  label: string;
+  value: string;
+  variant: VariantProps<typeof buttonVariants>["variant"];
+};
+
+export type MenuButtons = Record<
+  Exclude<MenuView, "main">,
+  { label: string; component: () => ReactNode }
+>;

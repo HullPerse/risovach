@@ -20,7 +20,7 @@ export interface LineData {
   y2: number;
 }
 
-export type GridState = {
+export interface GridState {
   grid: GridInfo;
   skipAnimation: boolean;
-};
+}

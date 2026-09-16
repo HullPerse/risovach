@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import UserApi from "@/api/user.api";
+import { UserApi } from "@/api/user.api";
 import { wsClient } from "@/api/websocket.api";
+import { attempt } from "@/lib/attempt.utils";
 import type { UserStore } from "@/types/store";
 
 let wsUnsubscribe: (() => void) | null = null;
@@ -40,28 +41,20 @@ export const useUserStore = create<UserStore>()(
       setUser: (user) => set({ user }),
       subscribeToUserUpdates: () => {
         const { user } = get();
-        if (!user || wsUnsubscribe) {
-          return;
-        }
+        if (!user || wsUnsubscribe) return;
 
         wsUnsubscribe = wsClient.subscribe("users", (message) => {
           const current = get().user;
-          if (!current || message.id !== String(current.id)) {
-            return;
-          }
+          if (!current || message.id !== String(current.id)) return;
 
           if (message.action === "delete") {
             get().unsubscribeFromUserUpdates();
             get().clear();
-          } else {
-            get().refresh();
-          }
+          } else get().refresh();
         });
       },
       unsubscribeFromUserUpdates: () => {
-        if (!wsUnsubscribe) {
-          return;
-        }
+        if (!wsUnsubscribe) return;
         wsUnsubscribe();
         wsUnsubscribe = null;
       },
@@ -78,11 +71,9 @@ let initPromise: Promise<void> | null = null;
 
 export const initializeUserStore = (): Promise<void> => {
   const promiseFunc = async () => {
-    try {
-      await useUserStore.getState().refresh();
-    } finally {
+    await attempt(useUserStore.getState().refresh()).finally(() => {
       useUserStore.setState({ isLoading: false });
-    }
+    });
   };
 
   if (!initPromise) initPromise = promiseFunc();

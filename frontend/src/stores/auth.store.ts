@@ -1,10 +1,6 @@
 import { create } from "zustand";
 
-interface AuthState {
-  isAuthenticated: boolean;
-  login: () => void;
-  logout: () => void;
-}
+import type { AuthState } from "@/types/store";
 
 export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,

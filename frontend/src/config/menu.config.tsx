@@ -24,3 +24,6 @@ export const MenuButtons: MenuButton[] = [
     label: "Гитхаб",
   },
 ];
+
+export const githubLink = "https://github.com/hullperse/risovach";
+export const issuesLink = "https://github.com/hullperse/risovach/issues";

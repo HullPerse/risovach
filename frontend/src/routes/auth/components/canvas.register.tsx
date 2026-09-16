@@ -1,26 +1,20 @@
-import {
-  Pencil,
-  Eraser,
-  Pipette,
-  Undo2,
-  Redo2,
-  RefreshCcw,
-} from "lucide-react";
-import { useRef, useState } from "react";
+import { RefreshCcw } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import { CanvasComponent } from "@/components/canvas/index.canvas";
-import { ColorPicker } from "@/components/picker/index.picker";
+import { CanvasToolbar } from "@/components/canvas/components/toolbar.canvas";
+import { DrawingCanvas } from "@/components/canvas/drawing.canvas";
 import { Button } from "@/components/ui/button.component";
-import { Slider } from "@/components/ui/slider.component";
-import { PALETTE_COLORS } from "@/config/canvas.config";
-import { cn } from "@/lib/index.utils";
-import { useCanvasStore } from "@/stores/canvas.store";
-import type { CanvasAPI, CanvasTool } from "@/types/canvas";
+import { DEFAULT_BRUSH } from "@/config/drawing.config";
+import { useCanvasTool } from "@/hooks/canvas/tool.hook";
+import type { BrushSettings } from "@/types/brush";
+import type {
+  DrawingCanvasAPI,
+  DrawingCanvasState,
+  Size,
+} from "@/types/drawing";
 
-const TOOL_BUTTON_CLASSES = "noShadow size-8";
-const SELECTED_TOOL_CLASSES = "bg-primary border-border";
-const UNSELECTED_TOOL_CLASSES =
-  "border-border/30 hover:bg-primary/30 hover:border-border/60 bg-transparent";
+/** The backend stores the avatar at this size, so the canvas matches it. */
+const AVATAR_SIZE: Size = { height: 420, width: 420 };
 
 const CanvasRegister = ({
   setCurrentTab,
@@ -29,26 +23,31 @@ const CanvasRegister = ({
   setCurrentTab: (value: "data" | "canvas" | "preview") => void;
   onCreate: (file: File | null) => void;
 }) => {
-  const canvasApiRef = useRef<CanvasAPI | null>(null);
-  const lines = useCanvasStore((s) => s.lines);
-  const [selectedTool, setSelectedTool] = useState<CanvasTool>("draw");
+  const canvasApiRef = useRef<DrawingCanvasAPI | null>(null);
+  const { cancelTool, selectTool, tool } = useCanvasTool();
   const [selectedColor, setSelectedColor] = useState("#000000");
   const [selectedSize, setSelectedSize] = useState(8);
   const [selectedOpacity, setSelectedOpacity] = useState(1);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const prevToolRef = useRef<CanvasTool>("draw");
+  const [isEmpty, setIsEmpty] = useState(true);
+  const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  const handleToolChange = (tool: CanvasTool) => {
-    if (tool === "eyedropper") {
-      prevToolRef.current = selectedTool;
-    }
-    setSelectedTool(tool);
-  };
+  const brush = useMemo<BrushSettings>(
+    () => ({
+      ...DEFAULT_BRUSH,
+      color: selectedColor,
+      opacity: selectedOpacity,
+      size: selectedSize,
+    }),
+    [selectedColor, selectedOpacity, selectedSize]
+  );
 
-  const handleToolCancelEyedropper = () => {
-    setSelectedTool(prevToolRef.current);
-  };
+  const handleStateChange = useCallback((state: DrawingCanvasState) => {
+    setIsEmpty(state.empty);
+    setCanvasError(state.error);
+  }, []);
 
   const handleUndo = () => {
     canvasApiRef.current?.undo();
@@ -63,183 +62,65 @@ const CanvasRegister = ({
     setShowClearConfirm(false);
   };
 
-  const handleColorChange = (color: string) => {
-    if (!color.startsWith("#") || color.length > 7) {
-      return;
-    }
-    setSelectedColor(color);
-  };
-
-  const handleSizeChange = (size: number) => {
-    setSelectedSize(size);
-  };
-
-  const handleOpacityChange = (opacity: number) => {
-    setSelectedOpacity(opacity);
-  };
-
-  const handleColorPick = (color: string) => {
-    setSelectedColor(color);
-  };
-
-  const handleCreate = async () => {
+  /**
+   * Hands the avatar to the next step. A missing file is shown as an error:
+   * silently passing null left the preview empty with no explanation.
+   */
+  const handleCreate = () => {
     setIsCreating(true);
-    try {
+    setCreateError(null);
+
+    const create = async () => {
       const file = await canvasApiRef.current?.requestImage();
-      onCreate(file ?? null);
-    } finally {
+
       setIsCreating(false);
-    }
+
+      if (!file) {
+        setCreateError("PNG не собрался: обновите страницу и повторите");
+
+        return;
+      }
+
+      onCreate(file);
+    };
+
+    void create();
   };
+
+  const error = canvasError ?? createError;
 
   return (
     <main className="flex w-full flex-col items-center gap-4">
-      <CanvasComponent
-        dimensions={{ height: 420, width: 420 }}
-        color={selectedColor}
-        brushSize={selectedSize}
-        opacity={selectedOpacity}
-        tool={selectedTool}
+      <DrawingCanvas
         ref={canvasApiRef}
-        brushSizeRange={{ max: 100, min: 1 }}
-        onBrushSizeChange={handleSizeChange}
-        onOpacityChange={handleOpacityChange}
-        onColorPick={handleColorPick}
-        onToolChange={handleToolChange}
-        onToolCancel={handleToolCancelEyedropper}
-        zoom={{
-          initialZoom: 1,
-        }}
-        className="boxShadow"
+        brush={brush}
+        documentSize={AVATAR_SIZE}
+        tool={tool}
+        onColorPick={setSelectedColor}
+        onStateChange={handleStateChange}
+        onToolCancel={cancelTool}
+        onToolChange={selectTool}
+        /* The container sets the size and the sheet is drawn exactly 1:1; the
+        border stays outside content-box, or fitting would soften the avatar. */
+        className="boxShadow box-content size-[420px]"
       />
 
-      <section className="boxShadow border-border flex h-20 w-full flex-row border-2">
-        {/*TOOLS*/}
-        <div className="grid grid-cols-2 grid-rows-2 gap-0.5 p-0.5">
-          <Button
-            size="icon"
-            className={cn(
-              TOOL_BUTTON_CLASSES,
-              selectedTool === "draw"
-                ? SELECTED_TOOL_CLASSES
-                : UNSELECTED_TOOL_CLASSES
-            )}
-            onClick={() => handleToolChange("draw")}
-            aria-label="Кисть"
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            className={cn(
-              TOOL_BUTTON_CLASSES,
-              selectedTool === "eraser"
-                ? SELECTED_TOOL_CLASSES
-                : UNSELECTED_TOOL_CLASSES
-            )}
-            onClick={() => handleToolChange("eraser")}
-            aria-label="Ластик"
-          >
-            <Eraser className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            className={cn(
-              TOOL_BUTTON_CLASSES,
-              selectedTool === "eyedropper"
-                ? SELECTED_TOOL_CLASSES
-                : UNSELECTED_TOOL_CLASSES
-            )}
-            onClick={() => handleToolChange("eyedropper")}
-            aria-label="Пипетка"
-          >
-            <Pipette className="size-4" />
-          </Button>
-        </div>
-        {/*UNDO REDO*/}
-        <div className="flex flex-col gap-1 p-1">
-          <Button
-            size="icon"
-            className="noShadow border-border/30 hover:bg-primary/30 hover:border-border/60 size-8 bg-transparent"
-            onClick={handleUndo}
-            aria-label="Отменить"
-          >
-            <Undo2 className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            className="noShadow border-border/30 hover:bg-primary/30 hover:border-border/60 size-8 bg-transparent"
-            onClick={handleRedo}
-            aria-label="Повторить"
-          >
-            <Redo2 className="size-4" />
-          </Button>
-        </div>
-        {/*COLOR*/}
-        <div className="flex flex-row items-center gap-1 p-1">
-          <div className="grid grid-cols-5 grid-rows-3 gap-1">
-            {PALETTE_COLORS.map(({ name, hex }) => (
-              <Button
-                key={name}
-                type="button"
-                size="icon"
-                className={cn(
-                  "noShadow size-5 cursor-pointer border-2 transition-transform hover:scale-110",
-                  selectedColor === hex
-                    ? "border-text ring-text scale-110 ring-1"
-                    : "border-border"
-                )}
-                style={{ backgroundColor: hex }}
-                onClick={() => handleColorChange(hex)}
-                disabled={selectedColor === hex}
-                aria-label={name}
-                title={name}
-              />
-            ))}
-          </div>
-        </div>
-        {/*CUSTOM COLOR*/}
-        <div className="flex flex-row items-center p-1">
-          <ColorPicker value={selectedColor} onChange={handleColorChange}>
-            <Button
-              type="button"
-              size="icon"
-              className="border-border noShadow size-6 cursor-pointer border-2 p-0 transition-transform hover:scale-110"
-              style={{ backgroundColor: selectedColor }}
-              aria-label="Выбрать цвет"
-              title="Выбрать цвет"
-            />
-          </ColorPicker>
-        </div>
-        {/*SLIDERS*/}
-        <div className="flex flex-1 flex-col gap-4 p-1">
-          <div className="flex w-full flex-col gap-2 leading-tight">
-            <span className="text-muted text-[10px] font-bold tracking-widest uppercase">
-              Размер: {selectedSize}px
-            </span>
-            <Slider
-              min={1}
-              max={100}
-              value={selectedSize}
-              onValueChange={(e) => handleSizeChange(Number(e))}
-              aria-label="Размер кисти"
-            />
-          </div>
-          <div className="flex w-full flex-col gap-2 leading-tight">
-            <span className="text-muted text-[10px] font-bold tracking-widest uppercase">
-              Непрозрачность: {Math.round(selectedOpacity * 100)}%
-            </span>
-            <Slider
-              min={0}
-              max={1}
-              step={0.01}
-              value={selectedOpacity}
-              onValueChange={(e) => handleOpacityChange(Number(e))}
-              aria-label="Непрозрачность"
-            />
-          </div>
-        </div>
-      </section>
+      <CanvasToolbar
+        tool={tool}
+        onToolChange={selectTool}
+        color={selectedColor}
+        onColorChange={setSelectedColor}
+        size={selectedSize}
+        onSizeChange={setSelectedSize}
+        opacity={selectedOpacity}
+        onOpacityChange={setSelectedOpacity}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
+
+      {error ? (
+        <span className="text-error text-xs font-bold">{error}</span>
+      ) : null}
 
       <div className="flex w-full flex-row items-center gap-2">
         <Button
@@ -257,7 +138,7 @@ const CanvasRegister = ({
           variant="success"
           onClick={handleCreate}
           loading={isCreating}
-          disabled={lines.length === 0}
+          disabled={isEmpty}
         >
           Создать
         </Button>

@@ -52,14 +52,11 @@ class WsClient {
       try {
         const raw = JSON.parse(String(event.data));
         const parsed = wsMessageSchema.safeParse(raw);
-        if (!parsed.success) {
-          console.warn("Invalid WS message:", parsed.error.issues);
-          return;
-        }
+        if (!parsed.success) return console.warn("Invalid WS message:", parsed.error.issues);
         message = parsed.data;
       } catch {
-        console.warn("Failed to parse WS message");
-        return;
+       return console.warn("Failed to parse WS message");
+
       }
 
       const listeners = this.channels.get(message.channel);

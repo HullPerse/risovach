@@ -1,12 +1,6 @@
 import { create } from "zustand";
 
-import type { MenuView } from "@/types/menu";
-
-interface MenuStore {
-  activeView: MenuView;
-  setActiveView: (view: MenuView) => void;
-  toggleView: (view: MenuView) => void;
-}
+import type { MenuStore } from "@/types/store";
 
 export const useMenuStore = create<MenuStore>((set) => ({
   activeView: "main",

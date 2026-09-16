@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { JSX } from "react";
+import type { ReactNode } from "react";
 
 import { WindowComponent } from "@/components/shared/window.component";
 
@@ -9,7 +9,7 @@ import { RegisterAuth } from "./auth/register.auth";
 const AuthPage = () => {
   const [tab, setTab] = useState<"login" | "register">("login");
 
-  const tabMap: Record<string, JSX.Element> = {
+  const tabMap: Record<string, ReactNode> = {
     login: <LoginAuth setTab={setTab} />,
     register: <RegisterAuth setTab={setTab} />,
   };
@@ -19,9 +19,9 @@ const AuthPage = () => {
       label={tab === "login" ? "ВХОД" : "РЕГИСТРАЦИЯ"}
       className="absolute top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2"
     >
-      <div className="flex w-full flex-col items-center gap-2">
+      <section className="flex w-full flex-col items-center gap-2">
         {tabMap[tab]}
-      </div>
+      </section>
     </WindowComponent>
   );
 };

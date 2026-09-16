@@ -1,0 +1,10 @@
+[package]
+name = "drawing-brush"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+drawing-core = { workspace = true }
+drawing-raster = { workspace = true }
