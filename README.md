@@ -1,1 +1,1 @@
-ai slop
+idea: risovach is basically brokenpicturephone/garticphone styled app that will be improved upon what ive experiences with 2 of them while have a few years worth of drawing experience in these apps in local discord server
