@@ -24,4 +24,5 @@ export const TOOL_KEYS: Partial<Record<string, CanvasTool>> = {
   e: "eraser",
   g: "fill",
   i: "eyedropper",
+  p: "pencil",
 };

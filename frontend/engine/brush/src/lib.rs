@@ -30,6 +30,9 @@ pub struct BrushSettings {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StampStyle {
     pub color: Color,
+    /// No falloff band and whole pixel centres: the pencil writes strict
+    /// pixels, without anything around them.
+    pub hard_edge: bool,
     pub hardness: f64,
     pub size: f64,
     pub spacing: f64,
@@ -49,12 +52,15 @@ pub struct StrokeSample {
 pub enum Tool {
     Draw,
     Eraser,
+    /// Draw with a hard edge: a whole pixel per mark, nothing around it.
+    Pencil,
 }
 
 impl BrushSettings {
     pub fn style(&self) -> StampStyle {
         StampStyle {
             color: Color::from_hex(&self.color).unwrap_or(Color::BLACK),
+            hard_edge: false,
             hardness: self.hardness,
             size: self.size,
             spacing: self.spacing,
@@ -71,7 +77,21 @@ impl BrushSettings {
 }
 
 impl StampStyle {
+    /// The same stamp as a pencil: strict pixels, no soft fringe.
+    pub fn hard_edged(self) -> Self {
+        Self {
+            hard_edge: true,
+            ..self
+        }
+    }
+
     pub fn stamp_distance(&self) -> f64 {
+        if self.hard_edge {
+            // A whole pixel per step. Half a pixel would not move the line:
+            // the snapped stamp of a pencil lands on the same pixel twice.
+            return (self.size * self.spacing).max(1.0);
+        }
+
         (self.size * self.spacing).max(MIN_STAMP_DISTANCE)
     }
 

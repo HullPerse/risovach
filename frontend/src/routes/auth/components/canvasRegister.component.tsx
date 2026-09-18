@@ -1,4 +1,4 @@
-import { RefreshCcw } from "lucide-react";
+import { RefreshCcw, Scan } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { CanvasToolbar } from "@/components/canvas/components/toolbar.canvas";
@@ -31,6 +31,7 @@ const CanvasRegister = ({
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [zoom, setZoom] = useState(1);
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -46,8 +47,15 @@ const CanvasRegister = ({
 
   const handleStateChange = useCallback((state: DrawingCanvasState) => {
     setIsEmpty(state.empty);
+    setZoom(state.zoom);
     setCanvasError(state.error);
   }, []);
+
+  // With the camera free, the sheet can be moved off the screen: the zoom
+  // number and the fit button are how the view is found again.
+  const handleFit = () => {
+    canvasApiRef.current?.resetView();
+  };
 
   const handleUndo = () => {
     canvasApiRef.current?.undo();
@@ -121,11 +129,24 @@ const CanvasRegister = ({
       ) : null}
 
       <div className="flex w-full flex-row items-center gap-2">
+        <span className="text-muted mr-auto text-[10px] font-bold tracking-widest uppercase">
+          {Math.round(zoom * 100)}%
+        </span>
         <Button
           size="icon"
-          className="ml-auto size-9"
+          className="size-9"
+          onClick={handleFit}
+          title="Вписать холст"
+          aria-label="Вписать холст"
+        >
+          <Scan />
+        </Button>
+        <Button
+          size="icon"
+          className="size-9"
           onClick={() => setShowClearConfirm(true)}
           title="Очистить"
+          aria-label="Очистить"
         >
           <RefreshCcw />
         </Button>

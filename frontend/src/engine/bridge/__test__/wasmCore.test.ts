@@ -46,6 +46,27 @@ const loadEngine = async () => {
   });
 };
 
+/**
+ * How many layer pixels of every alpha value the document holds. The pencil
+ * is read through this: a strict tool leaves nothing but zeroes and 255s.
+ */
+const alphaHistogram = (core: WasmDrawingCore) => {
+  const histogram = new Map<number, number>();
+  const target = new Uint8Array(tileBytes());
+
+  for (const ref of core.layerTiles(core.activeLayerId)) {
+    if (!core.readTile(ref, target)) continue;
+
+    for (let index = 3; index < target.length; index += 4) {
+      const alpha = target[index];
+
+      histogram.set(alpha, (histogram.get(alpha) ?? 0) + 1);
+    }
+  }
+
+  return histogram;
+};
+
 describe("tile pixels across the edge", () => {
   skipWithoutEngine("tile side and length come from the core", async () => {
     await loadEngine();
@@ -99,6 +120,43 @@ describe("tile pixels across the edge", () => {
       )
     ).toBe(false);
     expect([...target].every((byte) => byte === 7)).toBe(true);
+
+    core.dispose();
+  });
+
+  skipWithoutEngine("the pencil paints strict pixels, the brush a fringe", async () => {
+    await loadEngine();
+
+    const core = await WasmDrawingCore.create(SIZE);
+
+    core.setBrush({ color: "#000000", hardness: 1, opacity: 1, size: 1, spacing: 0.25 });
+
+    // Both clicks land on a pixel corner: the pencil snaps to the pixel it
+    // hit and leaves only that one, the brush spreads over the four corners
+    // with partial coverage.
+    expect(core.setTool("pencil")).toBe(true);
+    expect(core.tool).toBe("pencil");
+
+    core.beginStroke(sample(30, 30));
+    core.endStroke();
+
+    const pencil = alphaHistogram(core);
+
+    expect(pencil.get(255)).toBe(1);
+    expect([...pencil.keys()].every((alpha) => alpha === 0 || alpha === 255)).toBe(
+      true
+    );
+
+    expect(core.setTool("draw")).toBe(true);
+
+    core.beginStroke(sample(60, 60));
+    core.endStroke();
+
+    const brush = alphaHistogram(core);
+
+    expect([...brush.keys()].some((alpha) => alpha !== 0 && alpha !== 255)).toBe(
+      true
+    );
 
     core.dispose();
   });

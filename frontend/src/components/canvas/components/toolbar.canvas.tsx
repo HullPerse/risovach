@@ -1,7 +1,8 @@
 import {
   Eraser,
-  Pencil,
+  Paintbrush,
   PaintBucket,
+  Pencil,
   Pipette,
   Redo2,
   Undo2,
@@ -21,7 +22,8 @@ const UNSELECTED_TOOL_CLASSES =
   "border-border/30 hover:bg-primary/30 hover:border-border/60 bg-transparent";
 
 const TOOLS = [
-  { icon: Pencil, label: "Кисть", value: "draw" },
+  { icon: Paintbrush, label: "Кисть", value: "draw" },
+  { icon: Pencil, label: "Карандаш", value: "pencil" },
   { icon: Eraser, label: "Ластик", value: "eraser" },
   { icon: PaintBucket, label: "Заливка", value: "fill" },
   { icon: Pipette, label: "Пипетка", value: "eyedropper" },
@@ -57,7 +59,7 @@ export const CanvasToolbar = ({
 
   return (
     <section className="boxShadow border-border flex h-20 w-full flex-row border-2">
-      <div className="grid grid-cols-2 grid-rows-2 gap-0.5 p-0.5">
+      <div className="grid grid-cols-3 grid-rows-2 gap-0.5 p-0.5">
         {TOOLS.map(({ icon: Icon, label, value }) => (
           <Button
             key={value}

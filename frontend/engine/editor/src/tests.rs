@@ -7,6 +7,7 @@ use drawing_core::color::Color;
 use drawing_core::geometry::{Point, Rect, Size};
 use drawing_core::tile::{tile_key, tiles_in_rect};
 
+use crate::fill::{FillOutcome, FillSettings};
 use crate::Editor;
 
 const SIZE: Size = Size::new(512.0, 512.0);
@@ -50,6 +51,12 @@ fn alpha_sum(editor: &Editor, layer_id: u32) -> u64 {
                 .sum::<u64>()
         })
         .sum()
+}
+
+/// A fill with the default settings, which is what the tool sends until the
+/// sliders in the settings row are moved.
+fn fill_at(editor: &mut Editor, x: f64, y: f64) -> FillOutcome {
+    editor.fill(Point::new(x, y), FillSettings::default())
 }
 
 fn stroke(editor: &mut Editor, from: (f64, f64), to: (f64, f64)) {
@@ -445,7 +452,7 @@ fn fill_pours_the_region_and_stops_at_the_stroke() {
         ..brush()
     });
 
-    assert!(editor.fill(Point::new(5.0, 30.0)));
+    assert_eq!(fill_at(&mut editor, 5.0, 30.0), FillOutcome::Filled);
 
     // The sheet around the stroke is blue now, the stroke itself stays red.
     assert_eq!(
@@ -466,10 +473,10 @@ fn fill_pours_the_region_and_stops_at_the_stroke() {
 fn fill_over_the_same_colour_is_not_a_change() {
     let mut editor = editor();
 
-    assert!(editor.fill(Point::new(10.0, 10.0)));
+    assert_eq!(fill_at(&mut editor, 10.0, 10.0), FillOutcome::Filled);
     assert!(editor.can_undo());
 
-    assert!(!editor.fill(Point::new(400.0, 400.0)));
+    assert_eq!(fill_at(&mut editor, 400.0, 400.0), FillOutcome::Nothing);
 
     // The undo returns an empty sheet: tiles the fill created are removed,
     // not left transparent in the map.
@@ -482,10 +489,26 @@ fn fill_over_the_same_colour_is_not_a_change() {
 fn fill_outside_the_document_does_nothing() {
     let mut editor = editor();
 
-    assert!(!editor.fill(Point::new(-5.0, 10.0)));
-    assert!(!editor.fill(Point::new(10.0, 600.0)));
+    assert_eq!(fill_at(&mut editor, -5.0, 10.0), FillOutcome::Nothing);
+    assert_eq!(fill_at(&mut editor, 10.0, 600.0), FillOutcome::Nothing);
     assert!(!editor.can_undo());
     assert!(!editor.has_content());
+}
+
+#[test]
+fn fill_refuses_a_hidden_layer_with_a_reason() {
+    let mut editor = editor();
+    let id = editor.active_layer_id();
+
+    editor.set_layer_visible(id, false);
+
+    assert_eq!(fill_at(&mut editor, 10.0, 10.0), FillOutcome::LayerHidden);
+    assert!(!editor.has_content());
+    assert!(!editor.can_undo());
+
+    editor.set_layer_visible(id, true);
+
+    assert_eq!(fill_at(&mut editor, 10.0, 10.0), FillOutcome::Filled);
 }
 
 #[test]
@@ -497,12 +520,279 @@ fn fill_applies_the_brush_opacity() {
         ..brush()
     });
 
-    assert!(editor.fill(Point::new(10.0, 10.0)));
+    assert_eq!(fill_at(&mut editor, 10.0, 10.0), FillOutcome::Filled);
 
     // Half red over the white background of the sampler. The alpha byte is
     // 128, not 127.5, so the composite sits at 255 * 127 / 255.
     assert_eq!(
         editor.sample(Point::new(250.0, 250.0)),
         Some(Color::new(255, 127, 127))
+    );
+}
+
+/// A 40 pixel dot of black: solid in the middle, a half transparent fringe at
+/// the border, which is what the grow and feather dials are for.
+///
+/// The centre sits on a pixel centre on purpose: the pixel 20 away is then
+/// exactly at the border of the stamp, with half coverage and a colour 128
+/// levels from white, so the dials have a number to bite on, not a guess.
+fn dotted() -> Editor {
+    let mut editor = editor();
+
+    editor.set_brush(BrushSettings {
+        color: String::from("#000000"),
+        size: 40.0,
+        ..brush()
+    });
+    stroke(&mut editor, (256.5, 60.5), (256.5, 60.5));
+    editor.set_brush(brush());
+
+    editor
+}
+
+#[test]
+fn tolerance_decides_what_the_region_reaches() {
+    let mut narrow = dotted();
+    let mut wide = dotted();
+
+    // The fringe pixel sits 128 levels from white. A tolerance under that
+    // leaves it, one at or above it takes it in.
+    assert_eq!(
+        narrow.sample(Point::new(256.0, 40.0)),
+        Some(Color::new(127, 127, 127))
+    );
+
+    narrow.fill(
+        Point::new(256.0, 400.0),
+        FillSettings {
+            tolerance: 64,
+            ..FillSettings::default()
+        },
+    );
+    wide.fill(
+        Point::new(256.0, 400.0),
+        FillSettings {
+            tolerance: 200,
+            ..FillSettings::default()
+        },
+    );
+
+    assert_eq!(
+        narrow.sample(Point::new(256.0, 40.0)),
+        Some(Color::new(127, 127, 127))
+    );
+    assert_eq!(
+        wide.sample(Point::new(256.0, 40.0)),
+        Some(Color::new(255, 0, 0))
+    );
+}
+
+#[test]
+fn grow_paints_the_fringe_but_stops_on_solid_content() {
+    let mut plain = dotted();
+    let mut grown = dotted();
+
+    let paint = |editor: &mut Editor, grow: u8| {
+        editor.set_brush(BrushSettings {
+            color: String::from("#0000ff"),
+            ..brush()
+        });
+        editor.fill(
+            Point::new(256.0, 400.0),
+            FillSettings {
+                grow,
+                tolerance: 64,
+                ..FillSettings::default()
+            },
+        );
+    };
+
+    paint(&mut plain, 0);
+    paint(&mut grown, 4);
+
+    // The fringe pixel is refused by the tolerance, so only the grow ring
+    // reaches it.
+    assert_eq!(
+        plain.sample(Point::new(256.0, 40.0)),
+        Some(Color::new(127, 127, 127))
+    );
+    assert_eq!(
+        grown.sample(Point::new(256.0, 40.0)),
+        Some(Color::new(0, 0, 255))
+    );
+
+    // The solid middle of the dot is opaque: the ring stops there instead of
+    // running over it, and the page under it keeps its own colour.
+    assert_eq!(grown.sample(Point::new(256.0, 60.0)), Some(Color::BLACK));
+}
+
+#[test]
+fn similar_colours_ignore_what_the_pixels_are_connected_to() {
+    let dotted = |editor: &mut Editor| {
+        editor.set_brush(BrushSettings {
+            color: String::from("#ff0000"),
+            size: 40.0,
+            ..brush()
+        });
+        stroke(editor, (100.5, 100.5), (100.5, 100.5));
+        stroke(editor, (400.5, 400.5), (400.5, 400.5));
+        editor.set_brush(BrushSettings {
+            color: String::from("#0000ff"),
+            ..brush()
+        });
+    };
+    let mut contiguous = editor();
+    let mut everywhere = editor();
+
+    dotted(&mut contiguous);
+    dotted(&mut everywhere);
+
+    let settings = |similar: bool| FillSettings {
+        similar,
+        tolerance: 0,
+        ..FillSettings::default()
+    };
+
+    contiguous.fill(Point::new(100.0, 100.0), settings(false));
+    everywhere.fill(Point::new(100.0, 100.0), settings(true));
+
+    // The second dot is across the white sheet: a connected fill leaves it,
+    // a fill by similar colours takes it because nothing else is red.
+    assert_eq!(
+        contiguous.sample(Point::new(400.0, 400.0)),
+        Some(Color::new(255, 0, 0))
+    );
+    assert_eq!(
+        everywhere.sample(Point::new(400.0, 400.0)),
+        Some(Color::new(0, 0, 255))
+    );
+}
+
+#[test]
+fn eight_neighbours_cross_a_diagonal_wall() {
+    let wall = |editor: &mut Editor| {
+        editor.set_brush(BrushSettings {
+            color: String::from("#ff0000"),
+            size: 1.0,
+            ..brush()
+        });
+        editor.set_tool(Tool::Pencil);
+        // Past the corner on purpose: the stamp step rarely lands on the last
+        // pixel, and a wall with a one pixel gap at its end is no wall.
+        stroke(editor, (0.0, 0.0), (520.0, 520.0));
+        editor.set_tool(Tool::Draw);
+        editor.set_brush(brush());
+    };
+    let mut four = editor();
+    let mut eight = editor();
+
+    wall(&mut four);
+    wall(&mut eight);
+
+    four.fill(
+        Point::new(500.0, 10.0),
+        FillSettings::default(),
+    );
+    eight.fill(
+        Point::new(500.0, 10.0),
+        FillSettings {
+            diagonal: true,
+            ..FillSettings::default()
+        },
+    );
+
+    // A one pixel diagonal is eight connected: a four connected flood cannot
+    // squeeze between its pixels, an eight connected one can.
+    assert_eq!(
+        four.sample(Point::new(10.0, 500.0)),
+        Some(Color::WHITE)
+    );
+    assert_eq!(
+        eight.sample(Point::new(10.0, 500.0)),
+        Some(Color::new(255, 0, 0))
+    );
+}
+
+#[test]
+fn feather_softens_the_edge_it_reaches() {
+    let mut editor = dotted();
+
+    editor.set_brush(BrushSettings {
+        color: String::from("#0000ff"),
+        ..brush()
+    });
+    editor.fill(
+        Point::new(256.0, 400.0),
+        FillSettings {
+            feather: 2,
+            tolerance: 64,
+            ..FillSettings::default()
+        },
+    );
+
+    // The fringe pixel is a mix now: the fill reached it with half its colour,
+    // not with all of it and not with none.
+    let Some(color) = editor.sample(Point::new(256.0, 40.0)) else {
+        panic!("the fringe pixel is inside the document")
+    };
+
+    assert!(color.b > 127, "the fill did not reach the fringe: {color:?}");
+    assert!(color.r < 127, "the fill covered the fringe whole: {color:?}");
+}
+
+#[test]
+fn the_outline_of_a_small_sheet_is_its_border() {
+    let size = Size::new(128.0, 128.0);
+    let mut editor = Editor::new(size, brush());
+
+    editor.set_brush(BrushSettings {
+        color: String::from("#0000ff"),
+        ..brush()
+    });
+
+    let settings = FillSettings::default();
+    let plain = editor.fill_outline(Point::new(10.0, 10.0), settings);
+
+    // Four edges, each one segment: the whole sheet is the region.
+    assert_eq!(
+        plain,
+        Some(vec![
+            0.0, 0.0, 128.0, 0.0, // top
+            0.0, 128.0, 128.0, 128.0, // bottom
+            0.0, 0.0, 0.0, 128.0, // left
+            128.0, 0.0, 128.0, 128.0, // right
+        ])
+    );
+
+    // A dot inside the sheet leaves a hole in the region, so the outline has
+    // more than the border.
+    stroke(&mut editor, (64.0, 64.0), (64.0, 64.0));
+
+    let holed = editor.fill_outline(Point::new(10.0, 10.0), settings).expect("an outline");
+
+    assert!(holed.len() > 16, "the hole is missing: {holed:?}");
+}
+
+#[test]
+fn a_whole_sheet_region_has_no_outline_to_show() {
+    let mut editor = editor();
+
+    editor.set_brush(BrushSettings {
+        color: String::from("#0000ff"),
+        ..brush()
+    });
+
+    // 512x512 is a quarter of a million pixels, over the preview limit: the
+    // preview is a hint, and its price has to stay bounded.
+    assert_eq!(editor.fill_outline(Point::new(10.0, 10.0), FillSettings::default()), None);
+}
+
+#[test]
+fn a_fill_outside_the_document_has_no_outline() {
+    let editor = editor();
+
+    assert_eq!(
+        editor.fill_outline(Point::new(-4.0, 10.0), FillSettings::default()),
+        None
     );
 }

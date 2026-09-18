@@ -73,6 +73,37 @@ export const tileScreenBox = (
   };
 };
 
+/**
+ * Where one document pixel is drawn. The tile rectangle is snapped as a whole,
+ * so pixels inside it keep the tile's own scale instead of being snapped one
+ * by one: this is the rectangle the user really sees under the pointer.
+ *
+ * The eyedropper reticle and its loupe both take their geometry here, or they
+ * would mark a neighbour of the pixel they read.
+ */
+export const drawnPixelRect = (
+  camera: Camera,
+  viewport: Size,
+  document: Size,
+  pixel: Point,
+  tileSize: number,
+  dpr: number
+): Rect => {
+  const cols = Math.max(1, Math.ceil(document.width / tileSize));
+  const col = Math.floor(pixel.x / tileSize);
+  const row = Math.floor(pixel.y / tileSize);
+  const box = tileScreenBox(row * cols + col, camera, viewport, document, tileSize, dpr);
+  const scaleX = box.width / tileSize;
+  const scaleY = box.height / tileSize;
+
+  return {
+    height: scaleY,
+    width: scaleX,
+    x: box.x + (pixel.x - col * tileSize) * scaleX,
+    y: box.y + (pixel.y - row * tileSize) * scaleY,
+  };
+};
+
 const frameKey = (frame: RenderFrame): string =>
   [
     frame.camera.x,

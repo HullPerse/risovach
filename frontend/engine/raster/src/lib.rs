@@ -41,9 +41,17 @@ pub enum BlendMode {
 /// The falloff band is at least one pixel wide, or a hard brush gives a torn
 /// edge, and it grows with brush softness. This also leaves a non empty mark
 /// for stamps smaller than a pixel.
-pub fn stamp_coverage(distance: f64, radius: f64, hardness: f64) -> f64 {
+///
+/// With `hard_edge` there is no band at all: a pixel is painted or it is not.
+/// The border is the radius itself, the same distance where a soft stamp of
+/// the same size drops to half coverage, so the two tools agree on size.
+pub fn stamp_coverage(distance: f64, radius: f64, hardness: f64, hard_edge: bool) -> f64 {
     if radius <= 0.0 {
         return 0.0;
+    }
+
+    if hard_edge {
+        return if distance <= radius { 1.0 } else { 0.0 };
     }
 
     let band = 1.0 + (1.0 - hardness).max(0.0) * radius;
@@ -99,6 +107,8 @@ pub struct StampOptions {
     /// and without this the stroke would spill past the sheet.
     pub clip: Rect,
     pub color: Color,
+    /// Whole pixels and no falloff: the pencil.
+    pub hard_edge: bool,
     pub hardness: f64,
     pub radius: f64,
 }
@@ -112,6 +122,7 @@ pub fn paint_stamp(tile: &mut Tile, options: &StampOptions) -> bool {
         center_y,
         clip,
         color,
+        hard_edge,
         hardness,
         radius,
     } = *options;
@@ -119,6 +130,15 @@ pub fn paint_stamp(tile: &mut Tile, options: &StampOptions) -> bool {
     if radius <= 0.0 || alpha <= 0.0 {
         return false;
     }
+
+    // A pencil sits on pixel centres. With a fractional pointer a one pixel
+    // stamp would otherwise touch two or four pixels, and the line would
+    // thicken into a blob wherever the pointer happened to be on a boundary.
+    let (center_x, center_y) = if hard_edge {
+        (center_x.floor() + 0.5, center_y.floor() + 0.5)
+    } else {
+        (center_x, center_y)
+    };
 
     let origin_x = tile.col as f64 * TILE_SIZE as f64;
     let origin_y = tile.row as f64 * TILE_SIZE as f64;
@@ -158,7 +178,7 @@ pub fn paint_stamp(tile: &mut Tile, options: &StampOptions) -> bool {
         for px in from_x..=to_x {
             let doc_x = origin_x + px as f64 + 0.5;
             let distance = (doc_x - center_x).hypot(doc_y - center_y);
-            let coverage = stamp_coverage(distance, radius, hardness);
+            let coverage = stamp_coverage(distance, radius, hardness, hard_edge);
 
             if coverage <= 0.0 {
                 continue;

@@ -5,6 +5,7 @@ import { BRUSH_START_MARGIN, CAMERA_ZOOM_STEP } from "@/config/drawing.config";
 import { screenToDocument } from "@/lib/camera.utils";
 import { isPointInCanvas } from "@/lib/canvas.utils";
 import { pinchGesture, pointerPair } from "@/lib/gesture.utils";
+import { minimapLayout, minimapPointDocument } from "@/lib/minimap.utils";
 import type { StrokeSample } from "@/types/engine/brush";
 import type {
   DrawingInputOptions,
@@ -29,7 +30,7 @@ const pointerPressure = (event: PointerEvent): number =>
  * Without a container there is nothing to listen to yet.
  */
 const setupInput = (context: InputContext): (() => void) | null => {
-  const { bridge, containerRef, optionsRef, overlayState, requestRender } =
+  const { bridge, containerRef, optionsRef, overlayState, requestOverlayRender } =
     context;
   const container = containerRef.current;
 
@@ -40,6 +41,7 @@ const setupInput = (context: InputContext): (() => void) | null => {
   let pinch: PointerPair | null = null;
   let spaceDown = false;
   let strokeId: number | null = null;
+  let minimapId: number | null = null;
 
   // ponytail: rect cache ceiling is a position-only layout shift with no
   // scroll or resize; then it drifts until the next gesture invalidates it.
@@ -67,11 +69,27 @@ const setupInput = (context: InputContext): (() => void) | null => {
     point.x <= bridge.viewSize.width &&
     point.y <= bridge.viewSize.height;
 
+  /**
+   * Document point under a pointer on the minimap, or null off the panel. The
+   * panel rectangle comes from the same pure function the overlay draws with,
+   * so the drag target and the drawn panel cannot drift apart.
+   */
+  const minimapPoint = (point: Point): Point | null =>
+    minimapPointDocument(
+      point,
+      bridge.size,
+      minimapLayout(bridge.size, bridge.viewSize)
+    );
+
   const syncCursor = (): void => {
     // the fill shows no ring, so the system cursor stays visible: hiding it
-    // would leave the pointer invisible over the sheet
+    // would leave the pointer invisible over the sheet. The minimap is a
+    // control, not the sheet: a hidden cursor could not take it.
     const hideCursor =
-      overlayState.current.inside && !spaceDown && bridge.toolName !== "fill";
+      overlayState.current.inside &&
+      !overlayState.current.minimapHover &&
+      !spaceDown &&
+      bridge.toolName !== "fill";
 
     container.style.cursor = hideCursor ? "none" : "crosshair";
   };
@@ -82,6 +100,7 @@ const setupInput = (context: InputContext): (() => void) | null => {
     if (point === null || !inViewport(point)) {
       state.hex = null;
       state.inside = false;
+      state.minimapHover = false;
       state.pointer = null;
 
       return;
@@ -89,6 +108,7 @@ const setupInput = (context: InputContext): (() => void) | null => {
 
     const document = documentPoint(point);
 
+    state.minimapHover = minimapPoint(point) !== null;
     // the ring and the magnifier live strictly inside the document
     state.inside = isPointInCanvas(document, bridge.size);
     state.pointer = document;
@@ -100,7 +120,8 @@ const setupInput = (context: InputContext): (() => void) | null => {
 
   const paintCursor = (): void => {
     syncCursor();
-    requestRender();
+    // Nothing but the pointer changed, so the document is not rebuilt here.
+    requestOverlayRender();
   };
 
   const refresh = (point: Point | null): void => {
@@ -161,6 +182,19 @@ const setupInput = (context: InputContext): (() => void) | null => {
       panStart = { point: local, pointerId: event.pointerId };
       capture(event);
       syncCursor();
+
+      return;
+    }
+
+    // The minimap is grabbed before any tool sees the pointer: a click on the
+    // panel would otherwise draw a dot under it in the far corner of the sheet.
+    const minimap = minimapPoint(local);
+
+    if (event.button === 0 && minimap) {
+      minimapId = event.pointerId;
+      bridge.centerOn(minimap);
+      capture(event);
+      refresh(local);
 
       return;
     }
@@ -231,6 +265,12 @@ const setupInput = (context: InputContext): (() => void) | null => {
         y: local.y - panStart.point.y,
       });
       panStart.point = local;
+    } else if (minimapId === event.pointerId) {
+      // Dragging keeps putting the grabbed point in the middle of the view: a
+      // released pointer outside the panel cannot happen, it is captured.
+      const minimap = minimapPoint(local);
+
+      if (minimap) bridge.centerOn(minimap);
     } else if (strokeId === event.pointerId) {
       bridge.pushSamples(samplesFor(event));
     }
@@ -250,6 +290,8 @@ const setupInput = (context: InputContext): (() => void) | null => {
       strokeId = null;
     }
 
+    if (minimapId === event.pointerId) minimapId = null;
+
     if (panStart?.pointerId === event.pointerId) panStart = null;
 
     if (container.hasPointerCapture(event.pointerId)) {
@@ -266,6 +308,17 @@ const setupInput = (context: InputContext): (() => void) | null => {
     invalidateRect();
 
     const local = localPoint(event);
+
+    if (event.shiftKey) {
+      // Shift turns the wheel into a scroll: the sheet follows the wheel the
+      // way a page would, instead of the view zooming under the pointer.
+      bridge.panBy({ x: -event.deltaX, y: -event.deltaY });
+      // the sheet moved under the pointer: the ring, the loupe and the hex
+      // name a different pixel now
+      refresh(local);
+
+      return;
+    }
 
     bridge.zoomAt(
       local,
@@ -311,7 +364,42 @@ const setupInput = (context: InputContext): (() => void) | null => {
       return optionsRef.current.onToolCancel();
     }
 
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const center: Point = {
+      x: bridge.viewSize.width / 2,
+      y: bridge.viewSize.height / 2,
+    };
+    const zoomStep = (factor: number): void => {
+      // The keyboard zooms about the middle of the view: there is no pointer
+      // to anchor to, and the middle is what the eye expects.
+      bridge.zoomAt(center, factor);
+      paintCursor();
+    };
+
+    if (event.ctrlKey || event.metaKey) {
+      // `Ctrl+0` fits the sheet, `Ctrl+1` is one pixel per screen pixel, the
+      // pair Photoshop and Krita both use.
+      if (event.key === "0") {
+        event.preventDefault();
+        bridge.fitView();
+        paintCursor();
+      } else if (event.key === "1") {
+        event.preventDefault();
+        bridge.zoomAt(center, 1 / bridge.zoom);
+        paintCursor();
+      }
+
+      return;
+    }
+
+    if (event.altKey) return;
+
+    if (event.key === "+" || event.key === "=") {
+      return zoomStep(CAMERA_ZOOM_STEP);
+    }
+
+    if (event.key === "-" || event.key === "_") {
+      return zoomStep(1 / CAMERA_ZOOM_STEP);
+    }
 
     const tool = TOOL_KEYS[event.key.toLowerCase()];
     if (tool) optionsRef.current.onToolChange(tool);
@@ -363,7 +451,7 @@ const setupInput = (context: InputContext): (() => void) | null => {
 };
 
 export const useDrawingInput = (options: DrawingInputOptions): void => {
-  const { bridge, containerRef, overlayState, requestRender } = options;
+  const { bridge, containerRef, overlayState, requestOverlayRender } = options;
   const optionsRef = useRef(options);
 
   // latest callbacks without re-subscribing the listeners
@@ -377,11 +465,11 @@ export const useDrawingInput = (options: DrawingInputOptions): void => {
       containerRef,
       optionsRef,
       overlayState,
-      requestRender,
+      requestOverlayRender,
     });
 
     return () => {
       teardown?.();
     };
-  }, [bridge, containerRef, overlayState, requestRender]);
+  }, [bridge, containerRef, overlayState, requestOverlayRender]);
 };

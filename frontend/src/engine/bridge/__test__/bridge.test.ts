@@ -214,20 +214,42 @@ describe("drawing bridge", () => {
     expect(bridge.camera).toEqual({ x: 0, y: 0, zoom: 1 });
   });
 
-  test("panning does not take the document off screen", () => {
+  test("panning is free: the document may leave the screen", () => {
     const { bridge } = setup();
 
     bridge.panBy({ x: 10_000, y: -10_000 });
-    expect(bridge.camera).toEqual({ x: 0, y: 0, zoom: 1 });
+
+    expect(bridge.camera).toEqual({ x: 10_000, y: -10_000, zoom: 1 });
   });
 
-  test("a viewport wider than the document allows panning into free space", () => {
-    const { bridge } = setup();
+  test("even a document smaller than the viewport can be moved", () => {
+    const { bridge } = setup({ height: 1024, width: 1024 });
 
-    bridge.setViewport({ height: 1024, width: 1024 });
+    // The clamp used to flatten this to zero: a small sheet could not be
+    // pushed away from the middle at all.
     bridge.panBy({ x: 10_000, y: 0 });
 
-    expect(bridge.camera).toEqual({ x: 256, y: 0, zoom: 1 });
+    expect(bridge.camera.x).toBe(10_000);
+  });
+
+  test("the minimap centres the view on a document point", () => {
+    const { bridge } = setup();
+
+    bridge.centerOn({ x: 0, y: 0 });
+
+    expect(bridge.camera).toEqual({ x: 256, y: 256, zoom: 1 });
+  });
+
+  test("centring on the same point notifies once", () => {
+    const { bridge, seen } = setup();
+
+    bridge.centerOn({ x: 0, y: 0 });
+
+    expect(seen()).toBe(1);
+
+    bridge.centerOn({ x: 0, y: 0 });
+
+    expect(seen()).toBe(1);
   });
 
   test("an empty sample list does not bother subscribers", () => {
@@ -280,6 +302,21 @@ describe("drawing bridge", () => {
 
     expect(core.brush.size).toBe(12);
     expect(core.tool).toBe("eyedropper");
+  });
+
+  test("the pencil is a tool of its own, not the brush again", () => {
+    const { bridge, core } = setup();
+
+    bridge.setTool("pencil");
+
+    expect(core.tool).toBe("pencil");
+    expect(bridge.toolName).toBe("pencil");
+
+    // Switching back and forth stays a real change both ways.
+    expect(core.setTool("pencil")).toBe(false);
+    bridge.setTool("draw");
+
+    expect(core.tool).toBe("draw");
   });
 
   test("the bridge repeats core commands only on a real change", () => {

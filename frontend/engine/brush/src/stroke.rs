@@ -53,7 +53,13 @@ impl StrokeEngine {
 
     pub fn begin(&mut self, sample: StrokeSample, brush: &BrushSettings, tool: Tool) {
         self.buffer = TileMap::new(self.buffer.cols());
-        self.style = Some(brush.style());
+        // One place decides where the tool turns into stamp settings: the
+        // pencil keeps its own edge and step, whatever the brush sliders say.
+        self.style = Some(if tool == Tool::Pencil {
+            brush.style().hard_edged()
+        } else {
+            brush.style()
+        });
         self.opacity = brush.opacity;
         self.tool = tool;
         self.carry = 0.0;
@@ -169,6 +175,7 @@ impl StrokeEngine {
                     center_y: sample.y,
                     clip,
                     color: style.color,
+                    hard_edge: style.hard_edge,
                     hardness: style.hardness,
                     radius,
                 },

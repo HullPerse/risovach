@@ -27,7 +27,7 @@ export const DrawingCanvas = ({
     containerRef,
     overlayRef,
     overlayState,
-    requestRender,
+    requestOverlayRender,
     surfaceRef,
   } = useDrawingCanvas({
     brush,
@@ -44,7 +44,7 @@ export const DrawingCanvas = ({
     onToolCancel,
     onToolChange,
     overlayState,
-    requestRender,
+    requestOverlayRender,
   });
 
   useImperativeHandle(ref, () => api);

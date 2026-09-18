@@ -104,6 +104,62 @@ fn stamp_step_is_never_below_the_minimum() {
 }
 
 #[test]
+fn a_pencil_steps_by_whole_pixels() {
+    let thin = BrushSettings {
+        size: 1.0,
+        ..brush()
+    }
+    .style()
+    .hard_edged();
+    let thick = brush().style().hard_edged();
+
+    // Half a pixel would land the snapped stamp on the pixel it just painted.
+    assert_eq!(thin.stamp_distance(), 1.0);
+    assert_eq!(thick.stamp_distance(), 2.0);
+    assert!(thin.hard_edge);
+    assert!(!brush().style().hard_edge);
+}
+
+#[test]
+fn a_one_pixel_pencil_draws_one_pixel_wide_line() {
+    let mut engine = StrokeEngine::new(SIZE, COLS);
+    let thin = BrushSettings {
+        size: 1.0,
+        ..red_brush()
+    };
+
+    engine.begin(sample(10.0, 10.0, 1.0), &thin, Tool::Pencil);
+    engine.add(sample(14.0, 10.0, 1.0));
+
+    for x in 10..=14usize {
+        assert_eq!(alpha_at(engine.buffer(), 0, x, 10), 255, "hole at x={x}");
+    }
+
+    for x in 10..=14usize {
+        assert_eq!(alpha_at(engine.buffer(), 0, x, 9), 0, "fringe above at x={x}");
+        assert_eq!(alpha_at(engine.buffer(), 0, x, 11), 0, "fringe below at x={x}");
+    }
+}
+
+#[test]
+fn a_pencil_keeps_its_stamp_inside_one_pixel() {
+    let mut engine = StrokeEngine::new(SIZE, COLS);
+    let thin = BrushSettings {
+        size: 1.0,
+        ..red_brush()
+    };
+
+    // Both samples sit inside pixel 10 with fractional offsets: the unsnapped
+    // centre of either would spill the mark into a neighbour.
+    engine.begin(sample(10.1, 10.2, 1.0), &thin, Tool::Pencil);
+    engine.add(sample(10.9, 10.1, 1.0));
+
+    assert_eq!(alpha_at(engine.buffer(), 0, 10, 10), 255);
+    assert_eq!(alpha_at(engine.buffer(), 0, 11, 10), 0);
+    assert_eq!(alpha_at(engine.buffer(), 0, 10, 11), 0);
+}
+
+#[test]
 fn distances_go_with_an_even_step_to_the_end_of_the_segment() {
     let (carry, distances) = stamp_distances(10.0, 2.0, 0.0);
 

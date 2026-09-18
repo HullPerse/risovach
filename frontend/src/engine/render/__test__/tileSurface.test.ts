@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   documentScreenRect,
+  drawnPixelRect,
   tileScreenBox,
 } from "@/engine/render/tileSurface.engine";
 import type { Camera } from "@/types/engine/drawing";
@@ -70,5 +71,54 @@ describe("tile rectangle on screen", () => {
     expect(Math.abs(covered - TILE * 2 * ZOOMED.zoom)).toBeLessThanOrEqual(
       1 / dpr
     );
+  });
+});
+
+/**
+ * The eyedropper reticle and its loupe need the pixel as it is really drawn:
+ * the tile is snapped as a whole, so pixels inside it keep the tile's scale.
+ */
+describe("drawn document pixel", () => {
+  const DOCUMENT = { height: 420, width: 420 };
+  const TILE = 256;
+  const ZOOMED: Camera = { x: -17.3, y: 3.2, zoom: 1.386 };
+
+  test("the pixel keeps the tile scale, not its own rounding", () => {
+    const dpr = 1;
+    const box = tileScreenBox(0, ZOOMED, VIEWPORT, DOCUMENT, TILE, dpr);
+    const scale = box.width / TILE;
+    const cell = drawnPixelRect(
+      ZOOMED,
+      VIEWPORT,
+      DOCUMENT,
+      { x: 200, y: 10 },
+      TILE,
+      dpr
+    );
+
+    expect(scale).not.toBeCloseTo(ZOOMED.zoom, 3);
+    expect(cell.width).toBeCloseTo(scale, 6);
+    expect(cell.x).toBeCloseTo(box.x + 200 * scale, 6);
+  });
+
+  test("neighbouring pixels share an edge", () => {
+    const left = drawnPixelRect(
+      ZOOMED,
+      VIEWPORT,
+      DOCUMENT,
+      { x: 200, y: 10 },
+      TILE,
+      1
+    );
+    const right = drawnPixelRect(
+      ZOOMED,
+      VIEWPORT,
+      DOCUMENT,
+      { x: 201, y: 10 },
+      TILE,
+      1
+    );
+
+    expect(left.x + left.width).toBeCloseTo(right.x, 6);
   });
 });

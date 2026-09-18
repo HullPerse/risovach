@@ -16,8 +16,19 @@ fn base() -> StampOptions {
         center_y: 20.0,
         clip: Rect::new(0.0, 0.0, TILE_SIZE as f64, TILE_SIZE as f64),
         color: RED,
+        hard_edge: false,
         hardness: 1.0,
         radius: 4.0,
+    }
+}
+
+fn pencil() -> StampOptions {
+    StampOptions {
+        center_x: 20.4,
+        center_y: 20.6,
+        hard_edge: true,
+        radius: 0.5,
+        ..base()
     }
 }
 
@@ -38,29 +49,108 @@ fn painted() -> Tile {
 
 #[test]
 fn coverage_is_full_inside_the_solid_core() {
-    assert_eq!(stamp_coverage(0.0, 8.0, 1.0), 1.0);
-    assert_eq!(stamp_coverage(6.0, 8.0, 1.0), 1.0);
+    assert_eq!(stamp_coverage(0.0, 8.0, 1.0, false), 1.0);
+    assert_eq!(stamp_coverage(6.0, 8.0, 1.0, false), 1.0);
 }
 
 #[test]
 fn coverage_falls_off_at_the_edge_and_reaches_zero() {
-    assert!(stamp_coverage(7.9, 8.0, 1.0) > 0.0);
-    assert!(stamp_coverage(8.4, 8.0, 1.0) > 0.0);
-    assert_eq!(stamp_coverage(8.5, 8.0, 1.0), 0.0);
-    assert_eq!(stamp_coverage(20.0, 8.0, 1.0), 0.0);
+    assert!(stamp_coverage(7.9, 8.0, 1.0, false) > 0.0);
+    assert!(stamp_coverage(8.4, 8.0, 1.0, false) > 0.0);
+    assert_eq!(stamp_coverage(8.5, 8.0, 1.0, false), 0.0);
+    assert_eq!(stamp_coverage(20.0, 8.0, 1.0, false), 0.0);
 }
 
 #[test]
 fn softness_widens_the_falloff_inside_the_stamp() {
-    assert_eq!(stamp_coverage(3.0, 8.0, 0.5), 1.0);
-    assert!(stamp_coverage(5.0, 8.0, 0.5) < 1.0);
-    assert!(stamp_coverage(5.0, 8.0, 0.5) > 0.0);
-    assert!(stamp_coverage(7.0, 8.0, 0.5) < stamp_coverage(5.0, 8.0, 1.0));
+    assert_eq!(stamp_coverage(3.0, 8.0, 0.5, false), 1.0);
+    assert!(stamp_coverage(5.0, 8.0, 0.5, false) < 1.0);
+    assert!(stamp_coverage(5.0, 8.0, 0.5, false) > 0.0);
+    assert!(
+        stamp_coverage(7.0, 8.0, 0.5, false) < stamp_coverage(5.0, 8.0, 1.0, false)
+    );
 }
 
 #[test]
 fn zero_radius_gives_no_coverage() {
-    assert_eq!(stamp_coverage(0.0, 0.0, 1.0), 0.0);
+    assert_eq!(stamp_coverage(0.0, 0.0, 1.0, false), 0.0);
+}
+
+#[test]
+fn a_hard_edge_paints_a_pixel_or_leaves_it_alone() {
+    assert_eq!(stamp_coverage(0.0, 4.0, 1.0, true), 1.0);
+    assert_eq!(stamp_coverage(4.0, 4.0, 1.0, true), 1.0);
+    assert_eq!(stamp_coverage(4.1, 4.0, 1.0, true), 0.0);
+    // Softness has nothing to widen here: the edge is the tool, not a setting.
+    assert_eq!(stamp_coverage(2.0, 4.0, 0.0, true), 1.0);
+}
+
+#[test]
+fn a_one_pixel_pencil_paints_exactly_one_pixel() {
+    let mut tile = tile();
+
+    assert!(paint_stamp(&mut tile, &pencil()));
+    assert_eq!(alpha_at(&tile, 20, 20), 255);
+    assert_eq!(alpha_at(&tile, 21, 20), 0);
+    assert_eq!(alpha_at(&tile, 19, 20), 0);
+    assert_eq!(alpha_at(&tile, 21, 21), 0);
+}
+
+#[test]
+fn a_pencil_snaps_its_centre_to_the_pixel() {
+    // Both pointers sit inside pixel (20, 20): a fractional centre would
+    // leave the same pixel painted twice or a neighbour touched.
+    let mut first = tile();
+    let mut second = tile();
+
+    paint_stamp(&mut first, &pencil());
+    paint_stamp(
+        &mut second,
+        &StampOptions {
+            center_x: 20.1,
+            center_y: 20.2,
+            ..pencil()
+        },
+    );
+
+    for y in 18..24usize {
+        for x in 18..24usize {
+            assert_eq!(alpha_at(&first, x, y), alpha_at(&second, x, y));
+        }
+    }
+}
+
+#[test]
+fn a_soft_stamp_of_the_same_size_keeps_its_fringe() {
+    let mut hard = tile();
+    let mut soft = tile();
+
+    paint_stamp(
+        &mut hard,
+        &StampOptions {
+            center_x: 20.5,
+            center_y: 20.5,
+            hard_edge: true,
+            radius: 3.6,
+            ..base()
+        },
+    );
+    paint_stamp(
+        &mut soft,
+        &StampOptions {
+            center_x: 20.5,
+            center_y: 20.5,
+            radius: 3.6,
+            ..base()
+        },
+    );
+
+    // Pixel 24 sits 4 pixels away: inside the soft falloff band, outside the
+    // hard edge. The pencil leaves it untouched, the brush paints a fringe.
+    assert_eq!(alpha_at(&hard, 24, 20), 0);
+    assert!(alpha_at(&soft, 24, 20) > 0);
+    assert_eq!(alpha_at(&hard, 20, 20), 255);
+    assert_eq!(alpha_at(&soft, 20, 20), 255);
 }
 
 #[test]

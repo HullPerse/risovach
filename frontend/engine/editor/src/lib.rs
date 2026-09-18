@@ -7,12 +7,13 @@
 //!
 //! The crate knows nothing about the browser or JavaScript.
 
-mod fill;
+pub mod fill;
 mod sample;
 
 #[cfg(test)]
 mod tests;
 
+pub use fill::{FillOutcome, FillSettings};
 pub use sample::sample_color;
 
 use drawing_brush::stroke::StrokeEngine;
@@ -27,7 +28,7 @@ use drawing_history::{History, HistoryPatch};
 use drawing_raster::BlendMode;
 use serde::Serialize;
 
-use fill::{paint_region, plan_fill};
+use fill::{paint_region, plan_fill, plan_outline};
 
 /// Layer description for the UI. There are no pixels here: the output pulls
 /// them, and only for tiles that really changed.
@@ -250,27 +251,40 @@ impl Editor {
 
     /// Region fill at a point: the flood runs over what the user sees, the
     /// paint goes into the active layer with the brush colour and opacity, and
-    /// the whole region commits as one history step. `false` means nothing
+    /// the whole region commits as one history step. `Nothing` means nothing
     /// changed: outside the document, an empty brush, or the colour over
     /// itself.
-    pub fn fill(&mut self, point: Point) -> bool {
+    pub fn fill(&mut self, point: Point, settings: FillSettings) -> FillOutcome {
         let color = Color::from_hex(&self.brush.color).unwrap_or(Color::BLACK);
         let opacity = self.brush.opacity;
-        let (layers, size) = (self.document.layers(), self.document.size());
 
-        let Some(plan) = plan_fill(layers, size, point, opacity) else {
-            return false;
-        };
-
-        if plan.indices.is_empty() {
-            return false;
+        if opacity.clamp(0.0, 1.0) <= 0.0 {
+            return FillOutcome::Nothing;
         }
 
         let layer_id = self.document.active_layer_id();
 
+        // A hidden layer would swallow the paint and show none of it: refuse
+        // with a reason, or the user waits for a fill that never appears.
+        match self.document.layer(layer_id) {
+            Some(layer) if !layer.visible => return FillOutcome::LayerHidden,
+            None => return FillOutcome::Nothing,
+            Some(_) => {}
+        }
+
+        let (layers, size) = (self.document.layers(), self.document.size());
+
+        let Some(plan) = plan_fill(layers, size, point, settings) else {
+            return FillOutcome::Nothing;
+        };
+
+        if plan.is_empty() {
+            return FillOutcome::Nothing;
+        }
+
         let outcome = {
             let Some(layer) = self.document.layer_mut(layer_id) else {
-                return false;
+                return FillOutcome::Nothing;
             };
 
             let keys = plan.keys.clone();
@@ -285,7 +299,7 @@ impl Editor {
         };
 
         let Some((before, after, keys)) = outcome else {
-            return false;
+            return FillOutcome::Nothing;
         };
 
         self.history.record(HistoryPatch {
@@ -295,7 +309,19 @@ impl Editor {
             layer_id,
         });
 
-        true
+        FillOutcome::Filled
+    }
+
+    /// Outline of the region a fill at this point would touch, for the preview
+    /// under the pointer: flat `x1, y1, x2, y2` segments in document pixels.
+    /// `None` when it is not worth showing.
+    pub fn fill_outline(&self, point: Point, settings: FillSettings) -> Option<Vec<f32>> {
+        plan_outline(
+            self.document.layers(),
+            self.document.size(),
+            point,
+            settings,
+        )
     }
 
     pub fn clear_layer(&mut self) -> bool {

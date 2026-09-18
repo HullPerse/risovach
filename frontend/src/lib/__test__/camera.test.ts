@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  clampCamera,
+  centerCameraOn,
   createCamera,
   documentRect,
   documentToScreen,
+  panCamera,
+  screenRectToDocument,
   screenToDocument,
   zoomCameraAt,
 } from "@/lib/camera.utils";
@@ -79,48 +81,48 @@ describe("camera", () => {
     expect(zoomed.zoom).toBe(0.05);
   });
 
-  test("a document the size of the viewport does not pan", () => {
-    const viewport = { height: 420, width: 420 };
-    const document = { height: 420, width: 420 };
-    const clamped = clampCamera(
-      { x: 10_000, y: -10_000, zoom: 1 },
-      viewport,
-      document,
-      true
-    );
+  test("a centred camera puts the point in the middle of the viewport", () => {
+    const camera = centerCameraOn(createCamera(2), DOCUMENT, {
+      x: 1500,
+      y: 200,
+    });
 
-    expect(clamped).toEqual({ x: 0, y: 0, zoom: 1 });
+    expect(documentToScreen(camera, VIEWPORT, DOCUMENT, { x: 1500, y: 200 })).toEqual(
+      { x: 400, y: 300 }
+    );
   });
 
-  test("a document smaller than the viewport moves in free space only", () => {
-    const clamped = clampCamera(
-      { x: 10_000, y: 0, zoom: 1 },
-      { height: 420, width: 420 },
-      { height: 200, width: 200 },
-      true
+  test("the camera saves no zoom of its own", () => {
+    expect(centerCameraOn({ x: 9, y: 9, zoom: 0.4 }, DOCUMENT, { x: 0, y: 0 })).toEqual(
+      { x: 384, y: 216, zoom: 0.4 }
     );
-
-    expect(clamped.x).toBe(110);
   });
 
-  test("a large document can be panned to its edges", () => {
-    const clamped = clampCamera(
-      { x: 10_000, y: 0, zoom: 1 },
-      { height: 420, width: 420 },
-      { height: 1080, width: 1920 },
-      true
-    );
-
-    expect(clamped.x).toBe(750);
-    expect(clamped.y).toBe(0);
+  test("a sheet can be moved right off the screen", () => {
+    // The pan used to be clamped to the free space; with the clamp gone a far
+    // away camera stays exactly where the drag left it.
+    expect(panCamera(createCamera(1), { x: 40_000, y: -40_000 })).toEqual({
+      x: 40_000,
+      y: -40_000,
+      zoom: 1,
+    });
   });
 
-  test("with clamping off the pan stays unchanged", () => {
-    const camera = { x: 10_000, y: -10_000, zoom: 1 };
+  test("a screen rectangle converts to the document area it covers", () => {
+    const camera = { x: 30, y: -20, zoom: 2 };
+    const screen = { height: 100, width: 200, x: 120, y: 80 };
+    const area = screenRectToDocument(camera, VIEWPORT, DOCUMENT, screen);
 
-    expect(
-      clampCamera(camera, { height: 420, width: 420 }, { height: 420, width: 420 }, false)
-    ).toBe(camera);
+    expect(area.width * camera.zoom).toBeCloseTo(screen.width, 6);
+    expect(area.height * camera.zoom).toBeCloseTo(screen.height, 6);
+
+    const corner = screenToDocument(camera, VIEWPORT, DOCUMENT, {
+      x: screen.x,
+      y: screen.y,
+    });
+
+    expect(area.x).toBeCloseTo(corner.x, 6);
+    expect(area.y).toBeCloseTo(corner.y, 6);
   });
 
   test("the document rectangle is the corner and size with zoom", () => {

@@ -22,6 +22,7 @@ use drawing_core::color::Color;
 use drawing_core::geometry::{Point, Rect, Size};
 use drawing_core::{TILE_BYTES, TILE_SIZE};
 use drawing_editor::Editor;
+use drawing_editor::fill::{FillOutcome, FillSettings};
 use drawing_format::LoadError;
 use drawing_raster::BlendMode;
 use wasm_bindgen::prelude::*;
@@ -29,6 +30,17 @@ use wasm_bindgen::prelude::*;
 /// Blend mode of the stroke buffer.
 const MODE_SOURCE_OVER: u32 = 0;
 const MODE_DESTINATION_OUT: u32 = 1;
+
+/// Tool ids. They must match `CORE_TOOL` in `src/config/drawing.config.ts`:
+/// a mismatch silently picks another brush instead of failing loudly.
+const TOOL_DRAW: u32 = 0;
+const TOOL_ERASER: u32 = 1;
+const TOOL_PENCIL: u32 = 2;
+
+/// What a fill did. They must match `FILL_STATUS` in the same config file.
+const FILL_NOTHING: u32 = 0;
+const FILL_DONE: u32 = 1;
+const FILL_LAYER_HIDDEN: u32 = 2;
 
 /// Colour sample value outside the document.
 const NO_COLOR: u32 = u32::MAX;
@@ -121,16 +133,26 @@ impl DrawingEngine {
         })
     }
 
-    /// The eraser is all the core needs to know about a tool: the eyedropper
-    /// changes nothing in the document.
-    pub fn set_eraser(&mut self, eraser: bool) -> bool {
-        let tool = if eraser { Tool::Eraser } else { Tool::Draw };
+    /// Tools that paint are all the core knows: the eyedropper and the fill
+    /// change nothing about how a stroke is stamped, so they are not here.
+    /// An unknown id draws, which is the safe fallback.
+    pub fn set_tool(&mut self, mode: u32) -> bool {
+        let tool = match mode {
+            TOOL_ERASER => Tool::Eraser,
+            TOOL_PENCIL => Tool::Pencil,
+            _ => Tool::Draw,
+        };
 
         self.editor.set_tool(tool)
     }
 
-    pub fn is_eraser(&self) -> bool {
-        self.editor.tool() == Tool::Eraser
+    /// Tool the core holds now, as an id from the same list.
+    pub fn tool(&self) -> u32 {
+        match self.editor.tool() {
+            Tool::Eraser => TOOL_ERASER,
+            Tool::Pencil => TOOL_PENCIL,
+            Tool::Draw => TOOL_DRAW,
+        }
     }
 
     pub fn begin_stroke(
@@ -200,10 +222,51 @@ impl DrawingEngine {
         self.editor.clear_layer()
     }
 
-    /// Region fill at a point with the brush colour and opacity. `false` when
-    /// nothing changed: outside the document or the colour over itself.
-    pub fn fill(&mut self, x: f64, y: f64) -> bool {
-        self.editor.fill(Point::new(x, y))
+    /// Region fill at a point with the brush colour and opacity. The settings
+    /// come as plain numbers: a struct through the edge would cost more than
+    /// the numbers themselves. Returns what it did, so the page can say why
+    /// nothing appeared instead of showing a silent nothing.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fill(
+        &mut self,
+        x: f64,
+        y: f64,
+        tolerance: u32,
+        grow: u32,
+        feather: u32,
+        diagonal: bool,
+        similar: bool,
+    ) -> u32 {
+        match self.editor.fill(
+            Point::new(x, y),
+            fill_settings(tolerance, grow, feather, diagonal, similar),
+        ) {
+            FillOutcome::Filled => FILL_DONE,
+            FillOutcome::LayerHidden => FILL_LAYER_HIDDEN,
+            FillOutcome::Nothing => FILL_NOTHING,
+        }
+    }
+
+    /// Outline of the region a fill at this point would touch: flat
+    /// `x1, y1, x2, y2` segments in document pixels. Empty when there is
+    /// nothing to show.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fill_outline(
+        &self,
+        x: f64,
+        y: f64,
+        tolerance: u32,
+        grow: u32,
+        feather: u32,
+        diagonal: bool,
+        similar: bool,
+    ) -> Vec<f32> {
+        self.editor
+            .fill_outline(
+                Point::new(x, y),
+                fill_settings(tolerance, grow, feather, diagonal, similar),
+            )
+            .unwrap_or_default()
     }
 
     pub fn has_content(&self) -> bool {
@@ -289,6 +352,19 @@ fn to_js_error(error: LoadError) -> JsValue {
 
 fn rect(x: f64, y: f64, width: f64, height: f64) -> Rect {
     Rect::new(x, y, width, height)
+}
+
+/// Fill settings from the numbers the frontend sends. Everything is clamped
+/// in the core as well: the edge is not a place to trust.
+fn fill_settings(tolerance: u32, grow: u32, feather: u32, diagonal: bool, similar: bool) -> FillSettings {
+    FillSettings {
+        diagonal,
+        feather: feather.min(u32::from(u8::MAX)) as u8,
+        grow: grow.min(u32::from(u8::MAX)) as u8,
+        similar,
+        tolerance: tolerance.min(u32::from(u8::MAX)) as u8,
+    }
+    .sane()
 }
 
 fn flatten_pairs(pairs: Vec<(u32, u32)>) -> Vec<u32> {

@@ -205,21 +205,68 @@ export interface DrawingCanvasProps {
   zoomLimits?: ZoomLimits;
 }
 
+/**
+ * Panel, thumbnail and window rectangle of the minimap. All rectangles are in
+ * screen CSS pixels; `scale` is thumbnail pixels per document pixel.
+ */
+export interface MinimapLayout {
+  image: Rect;
+  panel: Rect;
+  scale: number;
+}
+
 export interface OverlayState {
   hex: string | null;
   inside: boolean;
+  /** Pointer sits on the minimap panel: the panel goes lighter and is dragged. */
+  minimapHover: boolean;
   pointer: Point | null;
 }
 
 export interface OverlayOptions {
   brush: BrushSettings;
   camera: Camera;
+  /**
+   * Screen rectangle the tile surface repainted this frame, or null when it
+   * drew nothing. The minimap copies exactly this from the source canvas, so
+   * the thumbnail follows the drawing without reading the document again.
+   */
+  dirty: Rect | null;
   document: Size;
   hex: string | null;
+  /** Pointer on the minimap: the panel goes lighter so the sheet shows through. */
+  minimapHover: boolean;
   pointer: Point | null;
   source: HTMLCanvasElement | null;
+  /** Tile side from the core: the reticle and the loupe mark a drawn pixel. */
+  tileSize: number;
   tool: CanvasTool;
   viewport: Size;
+}
+
+// Almond eye outline: two quadratic curves through the corners.
+// The curve peaks land exactly on the box top and bottom.
+export interface EyeCurve {
+  bottomControl: Point;
+  left: Point;
+  right: Point;
+  topControl: Point;
+}
+
+// One arm of the eyedropper reticle, screen pixels.
+export interface PixelSegment {
+  x1: number;
+  x2: number;
+  y1: number;
+  y2: number;
+}
+
+// The document pixel the eyedropper is going to sample and the corner marks
+// around it. Cell and crop both come from the same integer pixel, or the
+// loupe would show a neighbour of the colour it picks.
+export interface PixelReticle {
+  cell: Rect;
+  segments: PixelSegment[];
 }
 
 export interface BridgeOptions {
@@ -233,7 +280,7 @@ export interface InputContext {
   containerRef: RefObject<HTMLDivElement | null>;
   optionsRef: RefObject<DrawingInputOptions>;
   overlayState: RefObject<OverlayState>;
-  requestRender: () => void;
+  requestOverlayRender: () => void;
 }
 
 export interface PanStart {

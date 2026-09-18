@@ -1,11 +1,10 @@
 import {
   CAMERA_FIT_MAX_SCALE,
-  CAMERA_LIMIT_TO_BOUNDS,
   CAMERA_ZOOM_MAX,
   CAMERA_ZOOM_MIN,
 } from "@/config/drawing.config";
 import {
-  clampCamera,
+  centerCameraOn,
   clampZoom,
   createCamera,
   panCamera,
@@ -98,7 +97,6 @@ export class DrawingBridge {
 
   setViewport(size: Size): void {
     this.viewport = size;
-    this.view = clampCamera(this.view, size, this.size, CAMERA_LIMIT_TO_BOUNDS);
     this.notify();
   }
 
@@ -205,26 +203,34 @@ export class DrawingBridge {
       return;
     }
 
-    this.view = clampCamera(
-      next,
-      this.viewport,
-      this.size,
-      CAMERA_LIMIT_TO_BOUNDS
-    );
+    this.view = next;
     this.notify();
   }
 
+  /**
+   * Panning has no limit: the sheet may leave the screen completely, and the
+   * minimap plus "fit" are how it comes back. Clamping here is what used to
+   * keep it in sight, and also what made a document smaller than the viewport
+   * impossible to move at all.
+   */
   panBy(delta: Point): void {
     if (delta.x === 0 && delta.y === 0) {
       return;
     }
 
-    this.view = clampCamera(
-      panCamera(this.view, delta),
-      this.viewport,
-      this.size,
-      CAMERA_LIMIT_TO_BOUNDS
-    );
+    this.view = panCamera(this.view, delta);
+    this.notify();
+  }
+
+  /** Puts a document point in the middle of the viewport. Used by the minimap. */
+  centerOn(point: Point): void {
+    const next = centerCameraOn(this.view, this.size, point);
+
+    if (next.x === this.view.x && next.y === this.view.y) {
+      return;
+    }
+
+    this.view = next;
     this.notify();
   }
 

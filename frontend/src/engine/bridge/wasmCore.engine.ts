@@ -1,4 +1,5 @@
 import {
+  CORE_TOOL,
   DEFAULT_BRUSH,
   MAX_COLOR,
   MODE_DESTINATION_OUT,
@@ -45,8 +46,9 @@ const toRefs = (
  * Rust core over WebAssembly. Rust owns the pixels; the output copies them
  * by address in module memory, which is cheaper than a buffer round trip.
  *
- * Brush and tool are also kept here: the core knows only "eraser", while
- * the palette and the eyedropper are UI state.
+ * Brush and tool are also kept here: the core knows the tools that paint
+ * (brush, pencil, eraser), while the palette, the fill and the eyedropper are
+ * UI state.
  */
 export class WasmDrawingCore implements DrawingCore {
   private brushState: BrushSettings = DEFAULT_BRUSH;
@@ -187,7 +189,7 @@ export class WasmDrawingCore implements DrawingCore {
   setTool(tool: CanvasTool): boolean {
     if (this.strokeActive || tool === this.toolState) return false;
 
-    this.engine.set_eraser(tool === "eraser");
+    this.engine.set_tool(CORE_TOOL[tool]);
     this.toolState = tool;
 
     return true;

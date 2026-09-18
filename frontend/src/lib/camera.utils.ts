@@ -8,6 +8,7 @@ const clamp = (value: number, min: number, max: number): number => {
   return clamped + 0;
 };
 
+
 export const createCamera = (zoom: number): Camera => ({ x: 0, y: 0, zoom });
 
 export const clampZoom = (zoom: number, limits: ZoomLimits): number => {
@@ -69,23 +70,37 @@ export const panCamera = (camera: Camera, delta: Point): Camera => ({
   y: camera.y + delta.y,
 });
 
-export const clampCamera = (
+/**
+ * Camera that puts a document point in the middle of the viewport. This is
+ * the whole panning rule now: the sheet has no edges of its own, so no clamp
+ * stands between the pointer and the view.
+ *
+ * The viewport size drops out of the formula: the offset of the middle of the
+ * viewport cancels against the document centre in `documentToScreen`.
+ */
+export const centerCameraOn = (camera: Camera, document: Size, point: Point): Camera => ({
+  ...camera,
+  x: -((point.x - document.width / 2) * camera.zoom),
+  y: -((point.y - document.height / 2) * camera.zoom),
+});
+
+/** Document rectangle a screen rectangle covers. */
+export const screenRectToDocument = (
   camera: Camera,
   viewport: Size,
   document: Size,
-  limitToBounds: boolean
-): Camera => {
-  if (!limitToBounds) return camera;
-
-  // The document always stays on screen: when it fits whole, panning is
-  // limited to the free space; when it is larger, its edges are reachable.
-  const maxX = Math.abs(viewport.width - document.width * camera.zoom) / 2;
-  const maxY = Math.abs(viewport.height - document.height * camera.zoom) / 2;
+  rect: Rect
+): Rect => {
+  const from = screenToDocument(camera, viewport, document, {
+    x: rect.x,
+    y: rect.y,
+  });
 
   return {
-    ...camera,
-    x: clamp(camera.x, -maxX, maxX),
-    y: clamp(camera.y, -maxY, maxY),
+    height: rect.height / camera.zoom,
+    width: rect.width / camera.zoom,
+    x: from.x,
+    y: from.y,
   };
 };
 

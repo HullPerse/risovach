@@ -16,7 +16,12 @@ export interface Point {
   y: number;
 }
 
-export type CanvasTool = "draw" | "eraser" | "fill" | "eyedropper";
+export type CanvasTool =
+  | "draw"
+  | "pencil"
+  | "eraser"
+  | "fill"
+  | "eyedropper";
 
 export interface RequestImageOptions {
   filename?: string;
@@ -34,7 +39,12 @@ export interface DrawingInputOptions {
   onToolCancel: () => void;
   onToolChange: (tool: CanvasTool) => void;
   overlayState: RefObject<OverlayState>;
-  requestRender: () => void;
+  /**
+   * Asks for a new frame when only the pointer moved. The document is not
+   * rebuilt then: the tile index and the frame maps are not free, and hover
+   * goes through here on every mouse move.
+   */
+  requestOverlayRender: () => void;
 }
 
 export interface DrawingHookOptions {
@@ -51,7 +61,7 @@ export interface DrawingHookResult {
   containerRef: RefObject<HTMLDivElement | null>;
   overlayRef: RefObject<HTMLCanvasElement | null>;
   overlayState: RefObject<OverlayState>;
-  requestRender: () => void;
+  requestOverlayRender: () => void;
   surfaceRef: RefObject<HTMLCanvasElement | null>;
 }
 

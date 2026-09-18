@@ -25,6 +25,7 @@ import type {
   DrawingCanvasState,
   DrawingCore,
   OverlayState,
+  RenderFrame,
   Size,
   Surfaces,
 } from "@/types/engine/drawing";
@@ -56,9 +57,13 @@ export const useDrawingCanvas = ({
   const overlayState = useRef<OverlayState>({
     hex: null,
     inside: false,
+    minimapHover: false,
     pointer: null,
   });
   const frameRef = useRef(0);
+  /** Last frame handed to the output: pointer moves reuse it as it is. */
+  const frameCacheRef = useRef<RenderFrame | null>(null);
+  const overlayOnlyRef = useRef(false);
   const surfacesRef = useRef<Surfaces | null>(null);
   const fittedRef = useRef(false);
   const stateRef = useRef<DrawingCanvasState>({
@@ -160,30 +165,64 @@ export const useDrawingCanvas = ({
 
     if (!surfaces || !bridge) return;
 
-    const frame = bridge.frame();
+    // A pointer move changes nothing in the document. Reusing the last frame
+    // skips the tile index and the frame maps, and those are the price of
+    // every hover with the eyedropper.
+    const cached = overlayOnlyRef.current ? frameCacheRef.current : null;
+
+    overlayOnlyRef.current = false;
+
+    const frame = cached ?? bridge.frame();
+    // The minimap copies what the tile surface repainted, so the dirty
+    // rectangle is part of the frame handover, not of the tile surface.
+    const dirty = cached === null ? surfaces.tiles.render(frame, bridge.core) : null;
+
+    frameCacheRef.current = frame;
+
     const overlay = overlayState.current;
     const pointer = overlay.inside ? overlay.pointer : null;
 
-    surfaces.tiles.render(frame, bridge.core);
     surfaces.overlay.render({
       brush: bridge.brushSettings,
       camera: frame.camera,
+      dirty,
       document: frame.document,
       hex: overlay.hex,
+      // The source canvas feeds the loupe and the minimap: the second one
+      // needs it even with no pointer over the sheet.
+      minimapHover: overlay.minimapHover,
       pointer,
-      source: pointer ? surfaces.tiles.snapshot() : null,
+      source: surfaces.tiles.snapshot(),
+      tileSize: bridge.core.tileSize,
       tool: bridge.toolName,
       viewport: frame.viewport,
     });
   }, [bridge, ensureSurfaces]);
 
-  const requestRender = useCallback(() => {
-    if (frameRef.current !== 0) return;
+  const schedule = useCallback(
+    (overlayOnly: boolean) => {
+      if (frameRef.current !== 0) {
+        // A pending full frame absorbs an overlay-only request.
+        if (!overlayOnly) overlayOnlyRef.current = false;
 
-    frameRef.current = requestAnimationFrame(renderNow);
-  }, [renderNow]);
+        return;
+      }
+
+      overlayOnlyRef.current = overlayOnly;
+      frameRef.current = requestAnimationFrame(renderNow);
+    },
+    [renderNow]
+  );
+
+  const requestRender = useCallback(() => schedule(false), [schedule]);
+  const requestOverlayRender = useCallback(() => schedule(true), [schedule]);
 
   useEffect(() => bridge?.subscribe(requestRender), [bridge, requestRender]);
+
+  useEffect(() => {
+    // A new core is a new document: the cached frame belongs to the old one.
+    if (bridge) frameCacheRef.current = null;
+  }, [bridge]);
 
   useEffect(() => {
     // a new document is fitted into the container again
@@ -336,7 +375,7 @@ export const useDrawingCanvas = ({
     containerRef,
     overlayRef,
     overlayState,
-    requestRender,
+    requestOverlayRender,
     surfaceRef,
   };
 };
