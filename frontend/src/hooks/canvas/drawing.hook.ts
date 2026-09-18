@@ -1,4 +1,3 @@
-import type { RefObject } from "react";
 import {
   useCallback,
   useEffect,
@@ -8,53 +7,41 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { EMPTY_VIEWPORT } from "@/config/drawing.config";
 import { DrawingBridge } from "@/engine/bridge/bridge.engine";
 import { WasmDrawingCore } from "@/engine/bridge/wasmCore.engine";
 import { exportDocument } from "@/engine/files/export.engine";
 import { exportProject } from "@/engine/files/project.engine";
 import { OverlaySurface } from "@/engine/render/overlaySurface.engine";
 import { TileSurface } from "@/engine/render/tileSurface.engine";
-import type { BrushSettings } from "@/types/brush";
-import type { CanvasTool, RequestImageOptions } from "@/types/canvas";
+import { attempt } from "@/lib/attempt.utils";
+import type {
+  DrawingHookOptions,
+  DrawingHookResult,
+  RequestImageOptions,
+} from "@/types/engine/canvas";
 import type {
   DrawingCanvasAPI,
   DrawingCanvasState,
   DrawingCore,
   OverlayState,
   Size,
-  ZoomLimits,
-} from "@/types/drawing";
+  Surfaces,
+} from "@/types/engine/drawing";
 
-export interface DrawingHookOptions {
-  brush: BrushSettings;
-  documentSize: Size;
-  onStateChange?: (state: DrawingCanvasState) => void;
-  tool: CanvasTool;
-  zoomLimits?: ZoomLimits;
-}
+// stable noop: useSyncExternalStore needs a subscribe even with no core yet
+const NOOP_SUBSCRIBE = (): (() => void) => (): void => undefined;
 
-export interface DrawingHookResult {
-  api: DrawingCanvasAPI;
-  bridge: DrawingBridge | null;
-  containerRef: RefObject<HTMLDivElement | null>;
-  overlayRef: RefObject<HTMLCanvasElement | null>;
-  overlayState: RefObject<OverlayState>;
-  requestRender: () => void;
-  surfaceRef: RefObject<HTMLCanvasElement | null>;
-}
-
-const EMPTY_VIEWPORT: Size = { height: 0, width: 0 };
-
-const noopUnsubscribe = (): void => {
-  // no core yet, so there is nothing to unsubscribe from
-};
-
-const NOOP_SUBSCRIBE = (): (() => void) => noopUnsubscribe;
-
-interface Surfaces {
-  overlay: OverlaySurface;
-  tiles: TileSurface;
-}
+const isCanvasStateEqual = (
+  a: DrawingCanvasState,
+  b: DrawingCanvasState
+): boolean =>
+  a.canRedo === b.canRedo &&
+  a.canUndo === b.canUndo &&
+  a.documentSize === b.documentSize &&
+  a.empty === b.empty &&
+  a.error === b.error &&
+  a.zoom === b.zoom;
 
 export const useDrawingCanvas = ({
   brush,
@@ -83,10 +70,6 @@ export const useDrawingCanvas = ({
     zoom: 1,
   });
 
-  // The core is rebuilt only with the document sides: the comparison is by
-  // numbers, so a new size object cannot wipe the document. Brush and tool
-  // reach the core through the effects below: otherwise every slider move
-  // would rebuild the core and erase the drawing.
   const { height, width } = documentSize;
   const [core, setCore] = useState<DrawingCore | null>(null);
   const [coreError, setCoreError] = useState<string | null>(null);
@@ -95,39 +78,27 @@ export const useDrawingCanvas = ({
   useEffect(() => {
     let active = true;
 
-    const prepare = async () => {
-      let next: DrawingCore;
+    (async () => {
+      const [data, error] = await attempt(
+        WasmDrawingCore.create({ height, width })
+      );
 
-      try {
-        // The core is a WebAssembly module and loads asynchronously, so the
-        // canvas stays empty until it is ready: half a core is worse.
-        next = await WasmDrawingCore.create({ height, width });
-      } catch (error: unknown) {
-        console.error("Ядро рисования не создалось", error);
+      if (error) {
+        console.error("Drawing core failed to start", error);
 
-        // Without a message the page looks like an empty canvas that simply
-        // refuses to draw, and nothing says why.
-        if (active) {
-          setCoreError("Движок рисования не загрузился: рисовать нельзя");
-        }
+        if (active) setCoreError("Холст не загрузился");
 
         return;
       }
 
-      if (active) {
+      if (!active) data.dispose();
+      else {
         setCoreError(null);
-        setLoadedSize(next.size);
-        setCore(next);
-      } else {
-        // The core was born after a size change or a page leave and never
-        // reached state, so nobody else will free it.
-        next.dispose();
+        setLoadedSize(data.size);
+        setCore(data);
       }
-    };
+    })();
 
-    void prepare();
-
-    // a new document is fitted into the container again
     fittedRef.current = false;
 
     return () => {
@@ -142,6 +113,8 @@ export const useDrawingCanvas = ({
    */
   useEffect(
     () => () => {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
       core?.dispose();
     },
     [core]
@@ -153,65 +126,62 @@ export const useDrawingCanvas = ({
   );
 
   /**
-   * A frame is built on demand: tiles are written into the dirty area only,
-   * and the overlay clears two rectangles instead of the whole canvas.
+   * Surfaces are built on demand, not in an effect: the canvases exist from
+   * the first commit, so any frame or measure can create them. This keeps
+   * painting working no matter in which order effects run or re-run.
    */
+  const ensureSurfaces = useCallback((): Surfaces | null => {
+    if (surfacesRef.current) return surfacesRef.current;
+
+    const surface = surfaceRef.current;
+    const overlay = overlayRef.current;
+
+    if (!surface || !overlay) return null;
+
+    surfacesRef.current = {
+      overlay: new OverlaySurface(overlay),
+      tiles: new TileSurface(surface),
+    };
+
+    return surfacesRef.current;
+  }, []);
+
+  /** Builds one frame on demand: tiles go to the dirty area only. */
   const renderNow = useCallback(() => {
     frameRef.current = 0;
 
-    const surfaces = surfacesRef.current;
+    let surfaces: Surfaces | null = null;
 
-    if (!(surfaces && bridge)) {
-      return;
+    try {
+      surfaces = ensureSurfaces();
+    } catch (error: unknown) {
+      console.error("Drawing surfaces failed to start", error);
     }
 
+    if (!surfaces || !bridge) return;
+
     const frame = bridge.frame();
-    const state = overlayState.current;
-    const pointer = state.inside ? state.pointer : null;
+    const overlay = overlayState.current;
+    const pointer = overlay.inside ? overlay.pointer : null;
 
     surfaces.tiles.render(frame, bridge.core);
     surfaces.overlay.render({
       brush: bridge.brushSettings,
       camera: frame.camera,
       document: frame.document,
-      hex: state.hex,
+      hex: overlay.hex,
       pointer,
       source: pointer ? surfaces.tiles.snapshot() : null,
       tool: bridge.toolName,
       viewport: frame.viewport,
     });
-  }, [bridge]);
+  }, [bridge, ensureSurfaces]);
 
   const requestRender = useCallback(() => {
-    if (frameRef.current !== 0) {
-      return;
-    }
+    if (frameRef.current !== 0) return;
 
     frameRef.current = requestAnimationFrame(renderNow);
   }, [renderNow]);
-
-  useEffect(() => {
-    const surface = surfaceRef.current;
-    const overlay = overlayRef.current;
-
-    const teardown = () => {
-      surfacesRef.current = null;
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = 0;
-    };
-
-    if (!(surface && overlay)) {
-      return teardown;
-    }
-
-    surfacesRef.current = {
-      overlay: new OverlaySurface(overlay),
-      tiles: new TileSurface(surface),
-    };
-    requestRender();
-
-    return teardown;
-  }, [requestRender]);
 
   useEffect(() => bridge?.subscribe(requestRender), [bridge, requestRender]);
 
@@ -222,16 +192,17 @@ export const useDrawingCanvas = ({
     const measure = () => {
       const container = containerRef.current;
 
-      if (!(container && bridge)) {
-        return;
-      }
+      if (!container || !bridge) return;
 
-      const rect = container.getBoundingClientRect();
-      const viewport = { height: rect.height, width: rect.width };
+      // The canvases fill the padding box: the border is not theirs. Measured
+      // by the border box the document was fitted and centred for a box four
+      // pixels wider, and the right/bottom edge was clipped away.
+      const viewport = {
+        height: container.clientHeight,
+        width: container.clientWidth,
+      };
 
-      if (viewport.width <= 0 || viewport.height <= 0) {
-        return;
-      }
+      if (viewport.width <= 0 || viewport.height <= 0) return;
 
       bridge.setViewport(viewport);
 
@@ -240,7 +211,7 @@ export const useDrawingCanvas = ({
         bridge.fitView();
       }
 
-      const surfaces = surfacesRef.current;
+      const surfaces = ensureSurfaces();
       const dpr = window.devicePixelRatio || 1;
 
       if (surfaces) {
@@ -256,9 +227,7 @@ export const useDrawingCanvas = ({
     const observer = new ResizeObserver(measure);
     const container = containerRef.current;
 
-    if (container) {
-      observer.observe(container);
-    }
+    if (container) observer.observe(container);
 
     const dprQuery = window.matchMedia(
       `(resolution: ${window.devicePixelRatio}dppx)`
@@ -270,20 +239,13 @@ export const useDrawingCanvas = ({
       observer.disconnect();
       dprQuery.removeEventListener("change", measure);
     };
-  }, [bridge, requestRender]);
+  }, [bridge, ensureSurfaces, requestRender]);
+
+  useEffect(() => bridge?.setBrush(brush), [bridge, brush]);
+  useEffect(() => bridge?.setTool(tool), [bridge, tool]);
 
   useEffect(() => {
-    bridge?.setBrush(brush);
-  }, [bridge, brush]);
-
-  useEffect(() => {
-    bridge?.setTool(tool);
-  }, [bridge, tool]);
-
-  useEffect(() => {
-    if (bridge && zoomLimits) {
-      bridge.setZoomLimits(zoomLimits);
-    }
+    if (bridge && zoomLimits) bridge.setZoomLimits(zoomLimits);
   }, [bridge, zoomLimits]);
 
   const canUndo = useSyncExternalStore(
@@ -310,18 +272,14 @@ export const useDrawingCanvas = ({
    */
   const loadProject = useCallback(
     async (bytes: Uint8Array): Promise<boolean> => {
-      let next: DrawingCore;
+      const [next, error] = await attempt(WasmDrawingCore.fromProject(bytes));
 
-      try {
-        next = await WasmDrawingCore.fromProject(bytes);
-      } catch (error: unknown) {
-        console.error("Проект не открывается", error);
+      if (error) {
+        console.error("Project file failed to open", error);
 
         return false;
       }
 
-      // An opened project brings its own canvas size, so the view is fitted
-      // again: the old zoom and pan belonged to another sheet.
       fittedRef.current = false;
       setLoadedSize(next.size);
       setCore(next);
@@ -344,16 +302,7 @@ export const useDrawingCanvas = ({
     };
     const previous = stateRef.current;
 
-    if (
-      previous.canRedo === next.canRedo &&
-      previous.canUndo === next.canUndo &&
-      previous.documentSize === next.documentSize &&
-      previous.empty === next.empty &&
-      previous.error === next.error &&
-      previous.zoom === next.zoom
-    ) {
-      return;
-    }
+    if (isCanvasStateEqual(previous, next)) return;
 
     stateRef.current = next;
     onStateChange?.(next);
@@ -363,13 +312,9 @@ export const useDrawingCanvas = ({
     () => ({
       canRedo,
       canUndo,
-      clear: () => {
-        bridge?.clearLayer();
-      },
+      clear: () => bridge?.clearLayer(),
       loadProject,
-      redo: () => {
-        bridge?.redo();
-      },
+      redo: () => bridge?.redo(),
       requestImage: (requestOptions?: RequestImageOptions) =>
         bridge
           ? exportDocument({
@@ -379,12 +324,8 @@ export const useDrawingCanvas = ({
           : Promise.resolve(null),
       requestProject: () =>
         bridge ? exportProject({ core: bridge.core }) : null,
-      resetView: () => {
-        bridge?.fitView();
-      },
-      undo: () => {
-        bridge?.undo();
-      },
+      resetView: () => bridge?.fitView(),
+      undo: () => bridge?.undo(),
     }),
     [bridge, canRedo, canUndo, loadProject]
   );

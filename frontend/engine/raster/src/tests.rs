@@ -2,6 +2,7 @@
 
 use drawing_core::TILE_SIZE;
 use drawing_core::color::Color;
+use drawing_core::geometry::Rect;
 use drawing_core::tile::Tile;
 
 use crate::{BlendMode, StampOptions, composite_tile, paint_stamp, stamp_coverage};
@@ -13,6 +14,7 @@ fn base() -> StampOptions {
         alpha: 1.0,
         center_x: 20.0,
         center_y: 20.0,
+        clip: Rect::new(0.0, 0.0, TILE_SIZE as f64, TILE_SIZE as f64),
         color: RED,
         hardness: 1.0,
         radius: 4.0,
@@ -85,6 +87,24 @@ fn stamp_does_not_leave_its_own_tile() {
         }
     ));
     assert!(alpha_at(&tile, 255, 255) > 0);
+}
+
+#[test]
+fn stamp_respects_the_clip_rectangle() {
+    let mut tile = tile();
+
+    assert!(paint_stamp(
+        &mut tile,
+        &StampOptions {
+            center_x: 20.0,
+            center_y: 20.0,
+            clip: Rect::new(22.0, 0.0, TILE_SIZE as f64 - 22.0, TILE_SIZE as f64),
+            radius: 4.0,
+            ..base()
+        }
+    ));
+    assert_eq!(alpha_at(&tile, 21, 20), 0);
+    assert!(alpha_at(&tile, 22, 20) > 0);
 }
 
 #[test]

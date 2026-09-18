@@ -1,4 +1,4 @@
-import type { Rect, Size, TileGrid, TileKey } from "@/types/drawing";
+import type { Rect, Size, TileGrid, TileKey } from "@/types/engine/drawing";
 
 /**
  * Tile grid and tile rectangles. The tile side comes in as a parameter from
@@ -9,6 +9,7 @@ export const tileGrid = (size: Size, tileSize: number): TileGrid => ({
   rows: Math.max(1, Math.ceil(size.height / tileSize)),
 });
 
+// row-major key: col first, then row
 export const tileRect = (
   key: TileKey,
   cols: number,

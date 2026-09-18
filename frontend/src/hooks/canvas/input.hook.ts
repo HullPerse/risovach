@@ -1,50 +1,21 @@
-import type { RefObject } from "react";
 import { useEffect, useRef } from "react";
 
+import { EDITABLE_SELECTOR, TOOL_KEYS } from "@/config/canvas.config";
 import { BRUSH_START_MARGIN, CAMERA_ZOOM_STEP } from "@/config/drawing.config";
-import type { DrawingBridge } from "@/engine/bridge/bridge.engine";
 import { screenToDocument } from "@/lib/camera.utils";
 import { isPointInCanvas } from "@/lib/canvas.utils";
 import { pinchGesture, pointerPair } from "@/lib/gesture.utils";
-import type { PointerPair } from "@/lib/gesture.utils";
-import type { StrokeSample } from "@/types/brush";
-import type { CanvasTool, Point } from "@/types/canvas";
-import type { OverlayState } from "@/types/drawing";
-
-export interface DrawingInputOptions {
-  bridge: DrawingBridge | null;
-  containerRef: RefObject<HTMLDivElement | null>;
-  onColorPick: (hex: string) => void;
-  onToolCancel: () => void;
-  onToolChange: (tool: CanvasTool) => void;
-  overlayState: RefObject<OverlayState>;
-  requestRender: () => void;
-}
-
-interface InputContext {
-  bridge: DrawingBridge | null;
-  containerRef: RefObject<HTMLDivElement | null>;
-  optionsRef: RefObject<DrawingInputOptions>;
-  overlayState: RefObject<OverlayState>;
-  requestRender: () => void;
-}
-
-interface PanStart {
-  point: Point;
-  pointerId: number;
-}
-
-const EDITABLE_SELECTOR = "input, textarea, select, [contenteditable]";
-const TOOL_KEYS: Partial<Record<string, CanvasTool>> = {
-  b: "draw",
-  e: "eraser",
-  i: "eyedropper",
-};
+import type { StrokeSample } from "@/types/engine/brush";
+import type {
+  DrawingInputOptions,
+  PointerPair,
+  Point,
+} from "@/types/engine/canvas";
+import type { InputContext, PanStart } from "@/types/engine/drawing";
 
 /** Canvas keys must not get in the way of text input. */
 const isEditable = (target: EventTarget | null): boolean =>
-  target instanceof Element &&
-  target.closest(EDITABLE_SELECTOR) !== null;
+  target instanceof Element && target.closest(EDITABLE_SELECTOR) !== null;
 
 /**
  * Pressure is taken from a pen only. Mouse and finger report a constant 0.5,
@@ -58,17 +29,11 @@ const pointerPressure = (event: PointerEvent): number =>
  * Without a container there is nothing to listen to yet.
  */
 const setupInput = (context: InputContext): (() => void) | null => {
-  const { containerRef, optionsRef, overlayState, requestRender } = context;
+  const { bridge, containerRef, optionsRef, overlayState, requestRender } =
+    context;
   const container = containerRef.current;
-  const ready = context.bridge;
 
-  // The core behind the seam may not be ready yet: until then there is
-  // nothing to listen to, since coordinates cannot map to a document.
-  if (!(container && ready)) {
-    return null;
-  }
-
-  const bridge: DrawingBridge = ready;
+  if (!container || !bridge) return null;
 
   const pointers = new Map<number, Point>();
   let panStart: PanStart | null = null;
@@ -76,10 +41,21 @@ const setupInput = (context: InputContext): (() => void) | null => {
   let spaceDown = false;
   let strokeId: number | null = null;
 
-  const localPoint = (event: { clientX: number; clientY: number }): Point => {
-    const rect = container.getBoundingClientRect();
+  // ponytail: rect cache ceiling is a position-only layout shift with no
+  // scroll or resize; then it drifts until the next gesture invalidates it.
+  let rect: DOMRect | null = null;
+  const getRect = (): DOMRect => (rect ??= container.getBoundingClientRect());
+  const invalidateRect = (): void => {
+    rect = null;
+  };
 
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  const localPoint = (event: { clientX: number; clientY: number }): Point => {
+    const box = getRect();
+    // The canvas sits inside the border: the pointer origin is the padding box.
+    const x = event.clientX - box.left - container.clientLeft;
+    const y = event.clientY - box.top - container.clientTop;
+
+    return { x, y };
   };
 
   const documentPoint = (point: Point): Point =>
@@ -92,8 +68,12 @@ const setupInput = (context: InputContext): (() => void) | null => {
     point.y <= bridge.viewSize.height;
 
   const syncCursor = (): void => {
-    container.style.cursor =
-      overlayState.current.inside && !spaceDown ? "none" : "crosshair";
+    // the fill shows no ring, so the system cursor stays visible: hiding it
+    // would leave the pointer invisible over the sheet
+    const hideCursor =
+      overlayState.current.inside && !spaceDown && bridge.toolName !== "fill";
+
+    container.style.cursor = hideCursor ? "none" : "crosshair";
   };
 
   const syncOverlay = (point: Point | null): void => {
@@ -116,6 +96,16 @@ const setupInput = (context: InputContext): (() => void) | null => {
       state.inside && bridge.toolName === "eyedropper"
         ? bridge.sampleColor(document)
         : null;
+  };
+
+  const paintCursor = (): void => {
+    syncCursor();
+    requestRender();
+  };
+
+  const refresh = (point: Point | null): void => {
+    syncOverlay(point);
+    paintCursor();
   };
 
   const capture = (event: PointerEvent): void => {
@@ -148,6 +138,7 @@ const setupInput = (context: InputContext): (() => void) | null => {
   };
 
   const onPointerDown = (event: PointerEvent): void => {
+    invalidateRect();
     const local = localPoint(event);
 
     pointers.set(event.pointerId, local);
@@ -198,6 +189,16 @@ const setupInput = (context: InputContext): (() => void) | null => {
       return;
     }
 
+    if (bridge.toolName === "fill") {
+      // the fill is a click action: it runs strictly inside the sheet, no
+      // stroke starts and no pointer is captured, so nothing follows it up
+      if (event.button === 0 && isPointInCanvas(point, bridge.size)) {
+        bridge.fill(point);
+      }
+
+      return;
+    }
+
     if (event.button !== 0 || !inside) {
       return;
     }
@@ -234,9 +235,7 @@ const setupInput = (context: InputContext): (() => void) | null => {
       bridge.pushSamples(samplesFor(event));
     }
 
-    syncOverlay(local);
-    syncCursor();
-    requestRender();
+    refresh(local);
   };
 
   const onPointerUp = (event: PointerEvent): void => {
@@ -244,33 +243,27 @@ const setupInput = (context: InputContext): (() => void) | null => {
 
     pointers.delete(event.pointerId);
 
-    if (pointers.size < 2) {
-      pinch = null;
-    }
+    if (pointers.size < 2) pinch = null;
 
     if (strokeId === event.pointerId) {
       bridge.endStroke();
       strokeId = null;
     }
 
-    if (panStart?.pointerId === event.pointerId) {
-      panStart = null;
-    }
+    if (panStart?.pointerId === event.pointerId) panStart = null;
 
     if (container.hasPointerCapture(event.pointerId)) {
       container.releasePointerCapture(event.pointerId);
     }
 
-    if (pointers.size === 0) {
-      syncOverlay(local);
-    }
+    if (pointers.size === 0) syncOverlay(local);
 
-    syncCursor();
-    requestRender();
+    paintCursor();
   };
 
   const onWheel = (event: WheelEvent): void => {
     event.preventDefault();
+    invalidateRect();
 
     const local = localPoint(event);
 
@@ -278,11 +271,9 @@ const setupInput = (context: InputContext): (() => void) | null => {
       local,
       event.deltaY > 0 ? 1 / CAMERA_ZOOM_STEP : CAMERA_ZOOM_STEP
     );
-    syncOverlay(local);
     // zoom moves the document under the pointer, so the cursor is recomputed
     // here as well, or it stays hidden over the background
-    syncCursor();
-    requestRender();
+    refresh(local);
   };
 
   /**
@@ -293,28 +284,19 @@ const setupInput = (context: InputContext): (() => void) | null => {
   const onPointerLeave = (): void => {
     const state = overlayState.current;
 
-    if (state.pointer === null && state.hex === null && !state.inside) {
-      return;
-    }
+    if (state.pointer === null && state.hex === null && !state.inside) return;
 
-    state.hex = null;
-    state.inside = false;
-    state.pointer = null;
-
-    syncCursor();
-    requestRender();
+    syncOverlay(null);
+    paintCursor();
   };
 
   const onPointerEnter = (event: PointerEvent): void => {
-    syncOverlay(localPoint(event));
-    syncCursor();
-    requestRender();
+    invalidateRect();
+    refresh(localPoint(event));
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (isEditable(event.target)) {
-      return;
-    }
+    if (isEditable(event.target)) return;
 
     if (event.code === "Space") {
       if (!event.repeat) {
@@ -322,26 +304,17 @@ const setupInput = (context: InputContext): (() => void) | null => {
         syncCursor();
       }
 
-      event.preventDefault();
-
-      return;
+      return event.preventDefault();
     }
 
     if (event.key === "Escape" && bridge.toolName === "eyedropper") {
-      optionsRef.current.onToolCancel();
-
-      return;
+      return optionsRef.current.onToolCancel();
     }
 
-    if (event.altKey || event.ctrlKey || event.metaKey) {
-      return;
-    }
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
 
     const tool = TOOL_KEYS[event.key.toLowerCase()];
-
-    if (tool) {
-      optionsRef.current.onToolChange(tool);
-    }
+    if (tool) optionsRef.current.onToolChange(tool);
   };
 
   const onKeyUp = (event: KeyboardEvent): void => {
@@ -349,14 +322,15 @@ const setupInput = (context: InputContext): (() => void) | null => {
       spaceDown = false;
       syncCursor();
     }
-
   };
 
   const onBlur = (): void => {
     spaceDown = false;
-    syncCursor();
-    requestRender();
+    paintCursor();
   };
+
+  const layoutObserver = new ResizeObserver(invalidateRect);
+  layoutObserver.observe(container);
 
   container.addEventListener("pointerdown", onPointerDown);
   container.addEventListener("pointermove", onPointerMove);
@@ -368,8 +342,11 @@ const setupInput = (context: InputContext): (() => void) | null => {
   globalThis.addEventListener("blur", onBlur);
   globalThis.addEventListener("keydown", onKeyDown);
   globalThis.addEventListener("keyup", onKeyUp);
+  globalThis.addEventListener("scroll", invalidateRect, true);
+  globalThis.addEventListener("resize", invalidateRect);
 
   return () => {
+    layoutObserver.disconnect();
     container.removeEventListener("pointerdown", onPointerDown);
     container.removeEventListener("pointermove", onPointerMove);
     container.removeEventListener("pointerup", onPointerUp);
@@ -380,6 +357,8 @@ const setupInput = (context: InputContext): (() => void) | null => {
     globalThis.removeEventListener("blur", onBlur);
     globalThis.removeEventListener("keydown", onKeyDown);
     globalThis.removeEventListener("keyup", onKeyUp);
+    globalThis.removeEventListener("scroll", invalidateRect, true);
+    globalThis.removeEventListener("resize", invalidateRect);
   };
 };
 
@@ -387,6 +366,7 @@ export const useDrawingInput = (options: DrawingInputOptions): void => {
   const { bridge, containerRef, overlayState, requestRender } = options;
   const optionsRef = useRef(options);
 
+  // latest callbacks without re-subscribing the listeners
   useEffect(() => {
     optionsRef.current = options;
   });

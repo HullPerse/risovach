@@ -331,3 +331,48 @@ fn stroke_buffer_keeps_points_off_the_document() {
 
     assert!(engine.buffer().is_empty());
 }
+
+#[test]
+fn a_stamp_on_the_tile_seam_is_mirror_symmetric() {
+    let mut engine = StrokeEngine::new(SIZE, COLS);
+    let big = BrushSettings {
+        size: 100.0,
+        ..red_brush()
+    };
+
+    engine.begin(sample(256.0, 100.0, 1.0), &big, Tool::Draw);
+
+    for y in 40..160usize {
+        let left = alpha_at(engine.buffer(), 0, 255, y);
+        let right = alpha_at(engine.buffer(), 1, 0, y);
+
+        assert_eq!(left, right, "seam mismatch at row {y}");
+    }
+}
+
+#[test]
+fn a_stamp_hanging_over_the_document_edge_stays_inside() {
+    let size = Size::new(420.0, 420.0);
+    let mut engine = StrokeEngine::new(size, 2);
+    let big = BrushSettings {
+        size: 100.0,
+        ..red_brush()
+    };
+
+    engine.begin(sample(410.0, 210.0, 1.0), &big, Tool::Draw);
+
+    for y in 0..256usize {
+        for x in 164..256usize {
+            assert_eq!(
+                alpha_at(engine.buffer(), 1, x, y),
+                0,
+                "overhang paint at tile 1 ({x}, {y})"
+            );
+            assert_eq!(
+                alpha_at(engine.buffer(), 3, x, y),
+                0,
+                "overhang paint at tile 3 ({x}, {y})"
+            );
+        }
+    }
+}

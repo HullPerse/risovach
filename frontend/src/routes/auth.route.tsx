@@ -1,26 +1,30 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
 
 import { WindowComponent } from "@/components/shared/window.component";
+import type { AuthTab } from "@/types/app/auth";
 
 import { LoginAuth } from "./auth/login.auth";
 import { RegisterAuth } from "./auth/register.auth";
 
-const AuthPage = () => {
-  const [tab, setTab] = useState<"login" | "register">("login");
+const AUTH_TITLES: Record<AuthTab, string> = {
+  login: "ВХОД",
+  register: "РЕГИСТРАЦИЯ",
+};
 
-  const tabMap: Record<string, ReactNode> = {
-    login: <LoginAuth setTab={setTab} />,
-    register: <RegisterAuth setTab={setTab} />,
-  };
+const AuthPage = () => {
+  const [tab, setTab] = useState<AuthTab>("login");
 
   return (
     <WindowComponent
-      label={tab === "login" ? "ВХОД" : "РЕГИСТРАЦИЯ"}
+      label={AUTH_TITLES[tab]}
       className="absolute top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2"
     >
       <section className="flex w-full flex-col items-center gap-2">
-        {tabMap[tab]}
+        {tab === "login" ? (
+          <LoginAuth setTab={setTab} />
+        ) : (
+          <RegisterAuth setTab={setTab} />
+        )}
       </section>
     </WindowComponent>
   );

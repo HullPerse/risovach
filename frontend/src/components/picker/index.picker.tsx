@@ -1,7 +1,7 @@
 import { Popover } from "@base-ui/react/popover";
 
 import { cn } from "@/lib/index.utils";
-import type { ColorPickerProps } from "@/types/color";
+import type { ColorPickerProps } from "@/types/shared/color";
 
 import { ColorPickerPanel } from "./components/panel.picker";
 

@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider.component";
 import { FORMAT_PREFIX, FORMATS } from "@/config/color.config";
 import { formatColor, hexToHsv, hsvToHex, parseColor } from "@/lib/color.utils";
 import { cn } from "@/lib/index.utils";
-import type { ColorFormat, ColorPickerPanelProps, HSV } from "@/types/color";
+import type { ColorFormat, ColorPickerPanelProps, HSV } from "@/types/shared/color";
 
 import { ChannelInputs } from "./channels.picker";
 import { SaturationValueArea } from "./saturation.picker";

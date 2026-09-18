@@ -6,21 +6,21 @@ import { DrawingCanvas } from "@/components/canvas/drawing.canvas";
 import { Button } from "@/components/ui/button.component";
 import { DEFAULT_BRUSH } from "@/config/drawing.config";
 import { useCanvasTool } from "@/hooks/canvas/tool.hook";
-import type { BrushSettings } from "@/types/brush";
+import type { RegisterStep } from "@/types/app/auth";
+import type { BrushSettings } from "@/types/engine/brush";
 import type {
   DrawingCanvasAPI,
   DrawingCanvasState,
   Size,
-} from "@/types/drawing";
+} from "@/types/engine/drawing";
 
-/** The backend stores the avatar at this size, so the canvas matches it. */
 const AVATAR_SIZE: Size = { height: 420, width: 420 };
 
 const CanvasRegister = ({
   setCurrentTab,
   onCreate,
 }: {
-  setCurrentTab: (value: "data" | "canvas" | "preview") => void;
+  setCurrentTab: (value: RegisterStep) => void;
   onCreate: (file: File | null) => void;
 }) => {
   const canvasApiRef = useRef<DrawingCanvasAPI | null>(null);
@@ -100,9 +100,7 @@ const CanvasRegister = ({
         onStateChange={handleStateChange}
         onToolCancel={cancelTool}
         onToolChange={selectTool}
-        /* The container sets the size and the sheet is drawn exactly 1:1; the
-        border stays outside content-box, or fitting would soften the avatar. */
-        className="boxShadow box-content size-[420px]"
+        className="boxShadow box-content size-105"
       />
 
       <CanvasToolbar
@@ -145,10 +143,9 @@ const CanvasRegister = ({
       </div>
 
       {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <dialog
             open
-            aria-labelledby="clear-canvas-title"
             className="bg-background border-border boxShadow flex min-w-72 flex-col gap-4 border-4 p-6"
           >
             <span id="clear-canvas-title" className="text-center font-bold">
@@ -166,7 +163,7 @@ const CanvasRegister = ({
               </Button>
             </div>
           </dialog>
-        </div>
+        </section>
       )}
     </main>
   );

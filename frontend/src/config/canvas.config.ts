@@ -1,3 +1,5 @@
+import type { CanvasTool } from "@/types/engine/canvas";
+
 export const PALETTE_COLORS = [
   { hex: "#000000", name: "black" },
   { hex: "#808080", name: "grey" },
@@ -15,3 +17,11 @@ export const PALETTE_COLORS = [
   { hex: "#f06292", name: "pink" },
   { hex: "#26a69a", name: "teal" },
 ];
+
+export const EDITABLE_SELECTOR = "input, textarea, select, [contenteditable]";
+export const TOOL_KEYS: Partial<Record<string, CanvasTool>> = {
+  b: "draw",
+  e: "eraser",
+  g: "fill",
+  i: "eyedropper",
+};

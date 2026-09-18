@@ -1,6 +1,16 @@
+import type { RefObject } from "react";
+
+import type { DrawingBridge } from "../../engine/bridge/bridge.engine";
+import type { OverlaySurface } from "../../engine/render/overlaySurface.engine";
+import type { TileSurface } from "../../engine/render/tileSurface.engine";
+import type { RGB } from "../shared/color";
 import type { BrushSettings, StrokeSample } from "./brush";
-import type { CanvasTool, Point, RequestImageOptions } from "./canvas";
-import type { RGB } from "./color";
+import type {
+  CanvasTool,
+  DrawingInputOptions,
+  Point,
+  RequestImageOptions,
+} from "./canvas";
 
 export interface Size {
   height: number;
@@ -100,6 +110,8 @@ export interface DrawingCore extends TileReader, TileRefSource {
   /** Frees module memory. Required: the collector cannot see it. */
   dispose: () => void;
   endStroke: () => boolean;
+  /** Region fill at a point. `false` when nothing changed. */
+  fill: (point: Point) => boolean;
   pushSamples: (samples: StrokeSample[]) => void;
   readonly canRedo: boolean;
   readonly canUndo: boolean;
@@ -197,4 +209,39 @@ export interface OverlayState {
   hex: string | null;
   inside: boolean;
   pointer: Point | null;
+}
+
+export interface OverlayOptions {
+  brush: BrushSettings;
+  camera: Camera;
+  document: Size;
+  hex: string | null;
+  pointer: Point | null;
+  source: HTMLCanvasElement | null;
+  tool: CanvasTool;
+  viewport: Size;
+}
+
+export interface BridgeOptions {
+  core: DrawingCore;
+  limits?: ZoomLimits;
+  viewport: Size;
+}
+
+export interface InputContext {
+  bridge: DrawingBridge | null;
+  containerRef: RefObject<HTMLDivElement | null>;
+  optionsRef: RefObject<DrawingInputOptions>;
+  overlayState: RefObject<OverlayState>;
+  requestRender: () => void;
+}
+
+export interface PanStart {
+  point: Point;
+  pointerId: number;
+}
+
+export interface Surfaces {
+  overlay: OverlaySurface;
+  tiles: TileSurface;
 }

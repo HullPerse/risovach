@@ -1,5 +1,5 @@
 import { tileGrid, tileRect } from "@/lib/tiles.utils";
-import type { DrawingCore, Size } from "@/types/drawing";
+import type { DrawingCore, Size } from "@/types/engine/drawing";
 
 import { TileCanvasCache } from "@/engine/render/tileCache.engine";
 

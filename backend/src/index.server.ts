@@ -2,7 +2,6 @@ import { captureConsole, installErrorHandlers } from "hp_logger";
 
 import { createApp } from "./app.server";
 import { rawDb } from "./db/index.db";
-import migrate from "./db/migration.db";
 import { attemptSync } from "./lib/attempt.utils";
 import { createAppLogger } from "./lib/logger.utils";
 import { config, validateConfig } from "./server.config";
@@ -19,10 +18,6 @@ if (configErrors.length > 0) {
   await logger.close();
   process.exit(1);
 }
-
-migrate();
-
-logger.info("Database migrations applied");
 
 createApp().listen(config.port, (e) => {
   logger.success("api listening", { url: `http://${e.hostname}:${e.port}` });

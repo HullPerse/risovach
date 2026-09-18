@@ -1,4 +1,5 @@
 import {
+  CAMERA_FIT_MAX_SCALE,
   CAMERA_LIMIT_TO_BOUNDS,
   CAMERA_ZOOM_MAX,
   CAMERA_ZOOM_MIN,
@@ -10,24 +11,19 @@ import {
   panCamera,
   zoomCameraAt,
 } from "@/lib/camera.utils";
-import type { BrushSettings, StrokeSample } from "@/types/brush";
-import type { CanvasTool, Point } from "@/types/canvas";
+import type { BrushSettings, StrokeSample } from "@/types/engine/brush";
+import type { CanvasTool, Point } from "@/types/engine/canvas";
 import type {
+  BridgeOptions,
   Camera,
   DrawingCore,
   LayerInfo,
   RenderFrame,
   Size,
   ZoomLimits,
-} from "@/types/drawing";
+} from "@/types/engine/drawing";
 
 import { renderFrame } from "@/engine/render/compositor.engine";
-
-export interface BridgeOptions {
-  core: DrawingCore;
-  limits?: ZoomLimits;
-  viewport: Size;
-}
 
 /**
  * Seam between the UI and the drawing core.
@@ -184,6 +180,17 @@ export class DrawingBridge {
     return true;
   }
 
+  /** One fill is one history step inside the core. */
+  fill(point: Point): boolean {
+    if (!this.core.fill(point)) {
+      return false;
+    }
+
+    this.notify();
+
+    return true;
+  }
+
   zoomAt(screenPoint: Point, factor: number): void {
     const next = zoomCameraAt(
       this.view,
@@ -247,7 +254,7 @@ export class DrawingBridge {
     const scale = Math.min(
       this.viewport.width / this.size.width,
       this.viewport.height / this.size.height,
-      1
+      CAMERA_FIT_MAX_SCALE
     );
 
     return createCamera(clampZoom(scale, this.limits));

@@ -4,7 +4,10 @@ import { useImperativeHandle } from "react";
 import { useDrawingCanvas } from "@/hooks/canvas/drawing.hook";
 import { useDrawingInput } from "@/hooks/canvas/input.hook";
 import { cn } from "@/lib/index.utils";
-import type { DrawingCanvasAPI, DrawingCanvasProps } from "@/types/drawing";
+import type {
+  DrawingCanvasAPI,
+  DrawingCanvasProps,
+} from "@/types/engine/drawing";
 
 export const DrawingCanvas = ({
   brush,

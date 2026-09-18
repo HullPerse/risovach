@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button.component";
 import { useLogout } from "@/hooks/user/auth.hook";
 import { cn } from "@/lib/index.utils";
 import { useMenuStore } from "@/stores/menu.store";
-import type { MenuButtons, MenuTabs } from "@/types/menu";
+import type { MenuButtons, MenuTabs } from "@/types/app/menu";
 
 import ChatMenu from "./menu/chat.menu";
 import MenuAvatar from "./menu/components/avatar.menu";

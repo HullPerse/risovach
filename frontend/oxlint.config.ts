@@ -4,13 +4,7 @@ import react from "ultracite/oxlint/react";
 import tanstack from "ultracite/oxlint/tanstack";
 
 export default defineConfig({
-  extends: [
-    core,
-    react,
-    tanstack,
-  ],
-  // src/wasm это сгенерированная обвязка wasm-bindgen: править и проверять
-  // её нечего, она перезаписывается на каждой сборке движка.
+  extends: [core, react, tanstack],
   ignorePatterns: [...(core.ignorePatterns ?? []), "src/wasm/**"],
   overrides: [
     {
@@ -25,7 +19,6 @@ export default defineConfig({
     typeCheck: true,
   },
   // The compatibility overrides intentionally follow the existing project style.
-  // oxlint-disable-next-line sort-keys
   rules: {
     complexity: "warn",
     "func-style": "off",

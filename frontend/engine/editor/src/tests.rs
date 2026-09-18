@@ -434,3 +434,75 @@ fn foreign_bytes_are_not_a_project() {
     assert!(Editor::from_project(b"not a project").is_err());
     assert!(Editor::from_project(&[]).is_err());
 }
+
+#[test]
+fn fill_pours_the_region_and_stops_at_the_stroke() {
+    let mut editor = editor();
+
+    stroke(&mut editor, (10.0, 10.0), (100.0, 10.0));
+    editor.set_brush(BrushSettings {
+        color: String::from("#0000ff"),
+        ..brush()
+    });
+
+    assert!(editor.fill(Point::new(5.0, 30.0)));
+
+    // The sheet around the stroke is blue now, the stroke itself stays red.
+    assert_eq!(
+        editor.sample(Point::new(5.0, 30.0)),
+        Some(Color::new(0, 0, 255))
+    );
+    assert_eq!(
+        editor.sample(Point::new(50.0, 10.0)),
+        Some(Color::new(255, 0, 0))
+    );
+    assert_eq!(
+        editor.sample(Point::new(300.0, 300.0)),
+        Some(Color::new(0, 0, 255))
+    );
+}
+
+#[test]
+fn fill_over_the_same_colour_is_not_a_change() {
+    let mut editor = editor();
+
+    assert!(editor.fill(Point::new(10.0, 10.0)));
+    assert!(editor.can_undo());
+
+    assert!(!editor.fill(Point::new(400.0, 400.0)));
+
+    // The undo returns an empty sheet: tiles the fill created are removed,
+    // not left transparent in the map.
+    assert!(editor.undo());
+    assert!(!editor.has_content());
+    assert_eq!(editor.sample(Point::new(10.0, 10.0)), Some(Color::WHITE));
+}
+
+#[test]
+fn fill_outside_the_document_does_nothing() {
+    let mut editor = editor();
+
+    assert!(!editor.fill(Point::new(-5.0, 10.0)));
+    assert!(!editor.fill(Point::new(10.0, 600.0)));
+    assert!(!editor.can_undo());
+    assert!(!editor.has_content());
+}
+
+#[test]
+fn fill_applies_the_brush_opacity() {
+    let mut editor = editor();
+
+    editor.set_brush(BrushSettings {
+        opacity: 0.5,
+        ..brush()
+    });
+
+    assert!(editor.fill(Point::new(10.0, 10.0)));
+
+    // Half red over the white background of the sampler. The alpha byte is
+    // 128, not 127.5, so the composite sits at 255 * 127 / 255.
+    assert_eq!(
+        editor.sample(Point::new(250.0, 250.0)),
+        Some(Color::new(255, 127, 127))
+    );
+}

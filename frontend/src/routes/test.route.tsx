@@ -1,4 +1,10 @@
-import { Download, FolderOpen, RefreshCcw, RotateCcw, Save } from "lucide-react";
+import {
+  Download,
+  FolderOpen,
+  RefreshCcw,
+  RotateCcw,
+  Save,
+} from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -12,12 +18,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/modal.component";
+import { PROJECT_EXTENSION } from "@/config/api.config";
 import { DEFAULT_BRUSH } from "@/config/drawing.config";
-import { PROJECT_EXTENSION, readProjectFile } from "@/engine/files/project.engine";
-import { drawingEngineVersion, loadDrawingEngine } from "@/engine/bridge/wasm.engine";
+import {
+  drawingEngineVersion,
+  loadDrawingEngine,
+} from "@/engine/bridge/wasm.engine";
+import { readProjectFile } from "@/engine/files/project.engine";
 import { useCanvasTool } from "@/hooks/canvas/tool.hook";
-import type { BrushSettings } from "@/types/brush";
-import type { DrawingCanvasAPI, DrawingCanvasState } from "@/types/drawing";
+import type { BrushSettings } from "@/types/engine/brush";
+import type {
+  DrawingCanvasAPI,
+  DrawingCanvasState,
+} from "@/types/engine/drawing";
 
 const TEST_DIMENSIONS = { height: 1080, width: 1920 };
 
@@ -61,7 +74,7 @@ const TestPage = () => {
       try {
         await loadDrawingEngine();
       } catch (error: unknown) {
-        console.error("Ядро на Rust не загрузилось", error);
+        console.error("Drawing engine failed to load", error);
         return;
       }
 
@@ -153,10 +166,10 @@ const TestPage = () => {
     <main className="pointer-events-auto flex h-full w-full flex-col gap-2 p-2">
       <section className="flex w-full flex-row items-center gap-2">
         <span className="text-muted text-[10px] font-bold tracking-widest uppercase">
-          Проверочный холст {canvasState.documentSize.width}x
-          {canvasState.documentSize.height}, зум{" "}
-          {Math.round(canvasState.zoom * 100)}%, ядро{" "}
-          {engineVersion ?? "не загружено"}
+          Test canvas {canvasState.documentSize.width}x
+          {canvasState.documentSize.height}, zoom{" "}
+          {Math.round(canvasState.zoom * 100)}%, core{" "}
+          {engineVersion ?? "not loaded"}
         </span>
 
         {projectError ? (
@@ -204,7 +217,11 @@ const TestPage = () => {
             <Save className="size-4" />
             Сохранить проект
           </Button>
-          <Button variant="success" loading={isSaving} onClick={handleSaveImage}>
+          <Button
+            variant="success"
+            loading={isSaving}
+            onClick={handleSaveImage}
+          >
             <Download className="size-4" />
             Сохранить PNG
           </Button>

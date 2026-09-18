@@ -6,7 +6,7 @@ import {
   magnifierCrop,
   magnifierPosition,
 } from "@/engine/render/overlaySurface.engine";
-import type { Camera } from "@/types/drawing";
+import type { Camera } from "@/types/engine/drawing";
 
 const SIZE = { height: 512, width: 512 };
 const VIEWPORT = { height: 512, width: 512 };

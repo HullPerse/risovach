@@ -1,30 +1,12 @@
-import { z } from "zod";
-
-import { API_URL, request } from "@/config/api.config";
+import { request } from "@/api/request.api";
+import { API_URL } from "@/config/api.config";
+import { okSchema, userResponseSchema } from "@/lib/schemas/user.schema";
 import type {
   AvatarSize,
   LoginPayload,
   RegisterPayload,
   User,
-} from "@/types/user";
-
-const locationSchema = z.object({
-  city: z.string().nullable(),
-  country: z.string().nullable(),
-});
-
-const userSchema = z.object({
-  created: z.string(),
-  id: z.number(),
-  location: locationSchema,
-  username: z.string(),
-});
-
-const userResponseSchema = z.object({
-  user: userSchema,
-});
-
-const okSchema = z.object({ ok: z.boolean() });
+} from "@/types/app/user";
 
 export const UserApi = {
   avatarUrl(user: User, size: AvatarSize = "thumb"): string {

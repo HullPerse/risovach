@@ -200,6 +200,12 @@ impl DrawingEngine {
         self.editor.clear_layer()
     }
 
+    /// Region fill at a point with the brush colour and opacity. `false` when
+    /// nothing changed: outside the document or the colour over itself.
+    pub fn fill(&mut self, x: f64, y: f64) -> bool {
+        self.editor.fill(Point::new(x, y))
+    }
+
     pub fn has_content(&self) -> bool {
         self.editor.has_content()
     }

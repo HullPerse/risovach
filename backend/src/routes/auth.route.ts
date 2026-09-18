@@ -1,4 +1,4 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 
 import * as schema from "@/db/schema.db";
 import { attempt } from "@/lib/attempt.utils";
@@ -7,6 +7,10 @@ import { resolveClientIp } from "@/lib/geo.utils";
 import { processAvatar } from "@/lib/images.utils";
 import { nowIso, publicUser } from "@/lib/index.utils";
 import { createAppLogger } from "@/lib/logger.utils";
+import {
+  loginBodySchema,
+  registerBodySchema,
+} from "@/lib/schemas/auth.schema";
 import { broadcast } from "@/lib/websocket.utils";
 import {
   authPlugin,
@@ -70,13 +74,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
       return { user: publicUser(row) };
     },
     {
-      body: t.Object({
-        avatar: t.File(),
-        city: t.Optional(t.String({ maxLength: 100 })),
-        country: t.Optional(t.String({ maxLength: 100 })),
-        password: t.String({ maxLength: 24, minLength: 4 }),
-        username: t.String({ maxLength: 24, minLength: 4 }),
-      }),
+      body: registerBodySchema,
     }
   )
   .post(
@@ -103,10 +101,7 @@ const authRoute = new Elysia({ prefix: "/auth" })
       return { user: publicUser(row) };
     },
     {
-      body: t.Object({
-        password: t.String(),
-        username: t.String(),
-      }),
+      body: loginBodySchema,
     }
   )
   .post("/logout", ({ cookie }) => {

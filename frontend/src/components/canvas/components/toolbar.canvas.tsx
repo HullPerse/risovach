@@ -1,4 +1,11 @@
-import { Eraser, Pencil, Pipette, Redo2, Undo2 } from "lucide-react";
+import {
+  Eraser,
+  Pencil,
+  PaintBucket,
+  Pipette,
+  Redo2,
+  Undo2,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { ColorPicker } from "@/components/picker/index.picker";
@@ -6,7 +13,7 @@ import { Button } from "@/components/ui/button.component";
 import { Slider } from "@/components/ui/slider.component";
 import { PALETTE_COLORS } from "@/config/canvas.config";
 import { cn } from "@/lib/index.utils";
-import type { CanvasTool } from "@/types/canvas";
+import type { CanvasTool } from "@/types/engine/canvas";
 
 const TOOL_BUTTON_CLASSES = "noShadow size-8";
 const SELECTED_TOOL_CLASSES = "bg-primary border-border";
@@ -16,6 +23,7 @@ const UNSELECTED_TOOL_CLASSES =
 const TOOLS = [
   { icon: Pencil, label: "Кисть", value: "draw" },
   { icon: Eraser, label: "Ластик", value: "eraser" },
+  { icon: PaintBucket, label: "Заливка", value: "fill" },
   { icon: Pipette, label: "Пипетка", value: "eyedropper" },
 ] as const satisfies { icon: LucideIcon; label: string; value: CanvasTool }[];
 
@@ -43,9 +51,7 @@ export const CanvasToolbar = ({
   onRedo?: () => void;
 }) => {
   const selectColor = (next: string) => {
-    if (!next.startsWith("#") || next.length > 7) {
-      return;
-    }
+    if (!next.startsWith("#") || next.length > 7) return;
     onColorChange(next);
   };
 

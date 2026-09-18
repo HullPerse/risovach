@@ -18,7 +18,7 @@ import GithubSvg from "./components/svg/github.icon";
 import { Button } from "./components/ui/button.component";
 import { githubLink, issuesLink, MenuButtons } from "./config/menu.config";
 import { openLink } from "./lib/index.utils";
-import type { MenuButton } from "./types/menu";
+import type { MenuButton } from "./types/app/menu";
 
 const ICON_MAP: Record<MenuButton["value"], ReactNode> = {
   chat: <MessageSquareText className="size-6 fill-white" />,

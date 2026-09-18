@@ -24,11 +24,21 @@ pub fn sample_color(layers: &[Layer], size: Size, point: Point) -> Option<Color>
     let x = point.x.floor();
     let y = point.y.floor();
 
-    if x < 0.0 || y < 0.0 || x >= size.width || y >= size.height {
+    if x < 0.0 || y < 0.0 {
         return None;
     }
 
-    let (x, y) = (x as usize, y as usize);
+    pixel_color(layers, size, x as usize, y as usize)
+}
+
+/// Colour of one document pixel by its integer coordinates. Everything that
+/// compares the picture against what the user sees, like the region fill,
+/// goes through here: a second blend would drift apart from the eyedropper.
+pub(crate) fn pixel_color(layers: &[Layer], size: Size, x: usize, y: usize) -> Option<Color> {
+    if x as f64 >= size.width || y as f64 >= size.height {
+        return None;
+    }
+
     let grid = tile_grid(size, TILE_SIZE);
     let key = tile_key((x / TILE_SIZE) as u32, (y / TILE_SIZE) as u32, grid.cols);
     let index = ((y % TILE_SIZE) * TILE_SIZE + (x % TILE_SIZE)) * 4;

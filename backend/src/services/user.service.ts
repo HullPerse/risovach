@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db/index.db";
 import * as schema from "@/db/schema.db";
-import type { UserRow } from "@/lib/index.utils";
+import type { UserRow } from "@/types/user";
 
 export class UserService {
   private database = db;

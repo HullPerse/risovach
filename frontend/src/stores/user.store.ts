@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 import { UserApi } from "@/api/user.api";
 import { wsClient } from "@/api/websocket.api";
 import { attempt } from "@/lib/attempt.utils";
-import type { UserStore } from "@/types/store";
+import type { UserStore } from "@/types/app/store";
 
 let wsUnsubscribe: (() => void) | null = null;
 

@@ -1,17 +1,13 @@
-import type { Point } from "@/types/canvas";
-
-export interface PointerPair {
-  a: Point;
-  b: Point;
-}
+import type { Point, PointerPair } from "@/types/engine/canvas";
 
 export const pairCenter = ({ a, b }: PointerPair): Point => ({
   x: (a.x + b.x) / 2,
   y: (a.y + b.y) / 2,
 });
 
-export const pairDistance = ({ a, b }: PointerPair): number =>
-  Math.hypot(a.x - b.x, a.y - b.y);
+export const pairDistance = ({ a, b }: PointerPair): number => {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+};
 
 /**
  * The first two active pointers. A third finger does not affect the gesture,

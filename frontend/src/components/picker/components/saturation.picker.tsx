@@ -3,7 +3,7 @@ import type { KeyboardEvent, PointerEvent } from "react";
 
 import { clamp, hsvToHex } from "@/lib/color.utils";
 import { cn } from "@/lib/index.utils";
-import type { SaturationValueAreaProps } from "@/types/color";
+import type { SaturationValueAreaProps } from "@/types/shared/color";
 
 export const SaturationValueArea = ({
   hue,

@@ -1,66 +1,49 @@
-import { SPACING } from "@/config/dots.config";
-import type { GridDot, GridInfo } from "@/types/dots";
+import { CACHE_PREFIX, SPACING } from "@/config/dots.config";
+import { isGridInfo } from "@/lib/schemas/dots.schema";
+import type {
+  GridDot,
+  GridInfo,
+  GridState,
+  GridWindow,
+  Rgb,
+} from "@/types/shared/dots";
 
-export const buildGrid = (
-  width: number = window.innerWidth,
-  height: number = window.innerHeight
-): GridInfo => {
-  const spacing: number = SPACING;
-  const cols: number = Math.max(1, Math.floor(width / spacing));
-  const rows: number = Math.max(1, Math.floor(height / spacing));
+import { attemptSync, reportBackgroundError } from "./attempt.utils";
 
-  const sx: number = (width - (cols - 1) * spacing) / 2;
-  const sy: number = (height - (rows - 1) * spacing) / 2;
+const cacheKey = (width: number, height: number): string => {
+  return `${CACHE_PREFIX}:${SPACING}:${Math.round(width)}:${Math.round(height)}`;
+};
+
+export const buildGrid = (width: number, height: number): GridInfo => {
+  const cols: number = Math.max(1, Math.floor(width / SPACING));
+  const rows: number = Math.max(1, Math.floor(height / SPACING));
+
+  const sx: number = (width - (cols - 1) * SPACING) / 2;
+  const sy: number = (height - (rows - 1) * SPACING) / 2;
 
   const dots: GridDot[] = [];
 
   for (let r = 0; r < rows; r += 1) {
     for (let c = 0; c < cols; c += 1) {
-      dots.push({ x: sx + c * spacing, y: sy + r * spacing });
+      dots.push({ x: sx + c * SPACING, y: sy + r * SPACING });
     }
   }
 
-  return { cols, dots, rows, spacing, sx, sy };
-};
-
-const CACHE_PREFIX = "dots:grid";
-
-const cacheKey = (width: number, height: number): string =>
-  `${CACHE_PREFIX}:${SPACING}:${Math.round(width)}:${Math.round(height)}`;
-
-const isGridInfo = (value: unknown): value is GridInfo => {
-  if (typeof value !== "object" || value === null) return false;
-
-  const grid = value as Partial<GridInfo>;
-
-  if (typeof grid.cols !== "number") return false;
-  if (typeof grid.rows !== "number") return false;
-  if (typeof grid.spacing !== "number") return false;
-  if (typeof grid.sx !== "number") return false;
-  if (typeof grid.sy !== "number") return false;
-  if (!Number.isInteger(grid.cols)) return false;
-  if (!Number.isInteger(grid.rows)) return false;
-  if (!Array.isArray(grid.dots)) return false;
-  if (grid.dots.length !== grid.cols * grid.rows) return false;
-
-  return grid.dots.every(
-    (dot) => typeof dot.x === "number" && typeof dot.y === "number"
-  );
+  return { cols, dots, rows, spacing: SPACING, sx, sy };
 };
 
 export const loadGridFromCache = (
   width: number,
   height: number
 ): GridInfo | null => {
-  try {
+  const [parsed, error] = attemptSync(() => {
     const raw = window.sessionStorage.getItem(cacheKey(width, height));
     if (!raw) return null;
-
-    const parsed: unknown = JSON.parse(raw);
-    return isGridInfo(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+    const value = JSON.parse(raw);
+    return isGridInfo(value) ? value : null;
+  });
+  if (error) return null;
+  return parsed;
 };
 
 export const saveGridToCache = (
@@ -68,14 +51,10 @@ export const saveGridToCache = (
   width: number,
   height: number
 ): void => {
-  try {
-    window.sessionStorage.setItem(
-      cacheKey(width, height),
-      JSON.stringify(grid)
-    );
-  } catch {
-    /* storage unavailable — ignore */
-  }
+  const [, error] = attemptSync(() =>
+    window.sessionStorage.setItem(cacheKey(width, height), JSON.stringify(grid))
+  );
+  if (error) reportBackgroundError("dots:grid-cache", error);
 };
 
 export const clientToLocal = (
@@ -87,19 +66,30 @@ export const clientToLocal = (
   y: clientY - rect.top,
 });
 
+const gridWindow = (
+  x: number,
+  y: number,
+  radius: number,
+  grid: GridInfo
+): GridWindow => {
+  const { cols, rows, spacing, sx, sy } = grid;
+  return {
+    maxCol: Math.min(cols - 1, Math.floor((x + radius - sx) / spacing)),
+    maxRow: Math.min(rows - 1, Math.floor((y + radius - sy) / spacing)),
+    minCol: Math.max(0, Math.floor((x - radius - sx) / spacing)),
+    minRow: Math.max(0, Math.floor((y - radius - sy) / spacing)),
+  };
+};
+
 export const findNearestDot = (
   x: number,
   y: number,
   maxDist: number,
   grid: GridInfo
 ): number | null => {
-  const { cols, dots, rows, spacing, sx, sy } = grid;
+  const { cols, dots } = grid;
   const maxD2 = maxDist * maxDist;
-
-  const minCol = Math.max(0, Math.floor((x - maxDist - sx) / spacing));
-  const maxCol = Math.min(cols - 1, Math.floor((x + maxDist - sx) / spacing));
-  const minRow = Math.max(0, Math.floor((y - maxDist - sy) / spacing));
-  const maxRow = Math.min(rows - 1, Math.floor((y + maxDist - sy) / spacing));
+  const { maxCol, maxRow, minCol, minRow } = gridWindow(x, y, maxDist, grid);
 
   let best: number | null = null;
   let bestD2 = maxD2;
@@ -128,13 +118,9 @@ export const getDotsInRadius = (
   radius: number,
   grid: GridInfo
 ): { index: number; proximity: number }[] => {
-  const { cols, dots, rows, spacing, sx, sy } = grid;
+  const { cols, dots } = grid;
   const r2 = radius * radius;
-
-  const minCol = Math.max(0, Math.floor((x - radius - sx) / spacing));
-  const maxCol = Math.min(cols - 1, Math.floor((x + radius - sx) / spacing));
-  const minRow = Math.max(0, Math.floor((y - radius - sy) / spacing));
-  const maxRow = Math.min(rows - 1, Math.floor((y + radius - sy) / spacing));
+  const { maxCol, maxRow, minCol, minRow } = gridWindow(x, y, radius, grid);
 
   const result: { index: number; proximity: number }[] = [];
 
@@ -177,12 +163,6 @@ export const pointToDistance = (
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 };
 
-export interface Rgb {
-  r: number;
-  g: number;
-  b: number;
-}
-
 export const hexToRgb = (hex: string): Rgb => {
   const clean = hex.replace("#", "");
   const value =
@@ -199,14 +179,16 @@ export const hexToRgb = (hex: string): Rgb => {
 };
 
 export const mixColors = (from: Rgb, to: Rgb, t: number): string => {
-  const r = Math.round(from.r + (to.r - from.r) * t);
-  const g = Math.round(from.g + (to.g - from.g) * t);
-  const b = Math.round(from.b + (to.b - from.b) * t);
+  const k = Math.min(1, Math.max(0, t));
+  const r = Math.round(from.r + (to.r - from.r) * k);
+  const g = Math.round(from.g + (to.g - from.g) * k);
+  const b = Math.round(from.b + (to.b - from.b) * k);
 
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-export const getGridState = () => {
+// cached grid skips the intro stagger animation
+export const getGridState = (): GridState => {
   const width = window.innerWidth;
   const height = window.innerHeight;
   const cached = loadGridFromCache(width, height);

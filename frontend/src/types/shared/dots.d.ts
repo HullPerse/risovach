@@ -24,3 +24,16 @@ export interface GridState {
   grid: GridInfo;
   skipAnimation: boolean;
 }
+
+export interface GridWindow {
+  maxCol: number;
+  maxRow: number;
+  minCol: number;
+  minRow: number;
+}
+
+export interface Rgb {
+  r: number;
+  g: number;
+  b: number;
+}

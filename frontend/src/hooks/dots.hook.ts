@@ -17,12 +17,7 @@ import {
   pointToDistance,
   saveGridToCache,
 } from "@/lib/dots.utils";
-import type { GridState, LineData } from "@/types/dots";
-
-/** Cleanup for the paths where an effect has nothing to undo. */
-const noCleanup = (): void => {
-  // nothing to undo yet
-};
+import type { GridState, LineData } from "@/types/shared/dots";
 
 export const useDotsGrid = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,10 +45,7 @@ export const useDotsGrid = () => {
   useEffect(() => {
     const container = containerRef.current;
 
-    // Nothing to measure before the container exists.
-    if (!container) {
-      return noCleanup;
-    }
+    if (!container) return;
 
     const rebuild = () => {
       const rect = container.getBoundingClientRect();
@@ -129,12 +121,9 @@ export const useDotsGrid = () => {
   const updateHover = (x: number, y: number) => {
     const next = new Map<number, number>();
 
-    for (const { index, proximity } of getDotsInRadius(
-      x,
-      y,
-      HOVER_RADIUS,
-      gridRef.current
-    )) {
+    const radius = getDotsInRadius(x, y, HOVER_RADIUS, gridRef.current);
+
+    for (const { index, proximity } of radius) {
       next.set(index, proximity);
     }
 

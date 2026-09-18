@@ -28,12 +28,3 @@ export const registerSchema = z
     message: "Пароли не совпадают",
     path: ["confirmPassword"],
   });
-
-export const wsMessageSchema = z.object({
-  action: z.enum(["create", "update", "delete"]),
-  channel: z.string().min(1),
-  channels: z.array(z.string()).optional(),
-  id: z.string().optional(),
-});
-
-export type WsMessage = z.infer<typeof wsMessageSchema>;

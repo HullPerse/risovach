@@ -1,3 +1,5 @@
+import type { AttemptAllOptions } from "@/types/shared/attempt";
+
 export function toError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
 }
@@ -20,19 +22,14 @@ export function attemptSync<T>(fn: () => T): [T, null] | [null, Error] {
   }
 }
 
-export interface AttemptAllOptions {
-  onFinally?: () => unknown;
-}
-
+// first failure wins; onFinally error counts only if none yet
 export async function attemptAll(
   steps: ReadonlyArray<() => unknown>,
   options: AttemptAllOptions = {}
 ): Promise<Error | null> {
   let failure: Error | null = null;
   try {
-    for (const step of steps) {
-      await step();
-    }
+    for (const step of steps) await step();
   } catch (error) {
     failure = toError(error);
   }

@@ -1,24 +1,23 @@
 import { useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 
-import { CHANNEL_CONFIG, FORMAT_PREFIX } from "@/config/color.config";
+import {
+  CHANNEL_CONFIG,
+  CHANNEL_LABELS,
+  FORMAT_PREFIX,
+} from "@/config/color.config";
 import {
   clamp,
-  hslToRgb,
+  hslToHsv,
   hsvToChannelStrings,
   rgbToHsv,
 } from "@/lib/color.utils";
 import { cn } from "@/lib/index.utils";
-import type { ChannelFormat, ChannelInputsProps } from "@/types/color";
+import type { ChannelInputsProps } from "@/types/shared/color";
 
 const parseChannel = (n: string): number => {
   const value = Math.trunc(Number(n));
   return Number.isNaN(value) ? 0 : value;
-};
-
-const CHANNEL_LABELS: Record<ChannelFormat, [string, string, string]> = {
-  hsl: ["h", "s", "l"],
-  rgb: ["r", "g", "b"],
 };
 
 export const ChannelInputs = ({ format, hsv, commit }: ChannelInputsProps) => {
@@ -33,23 +32,16 @@ export const ChannelInputs = ({ format, hsv, commit }: ChannelInputsProps) => {
 
   const commitChannels = (channels: [string, string, string]) => {
     const [a, b, c] = channels.map(parseChannel);
-    if (format === "rgb") {
+
+    if (format === "hsl") {
+      commit(hslToHsv(clamp(a, 0, 360), clamp(c, 0, 100), clamp(b, 0, 100)));
+    } else {
       commit(
         rgbToHsv({
           b: clamp(c, 0, 255),
           g: clamp(b, 0, 255),
           r: clamp(a, 0, 255),
         })
-      );
-    } else {
-      commit(
-        rgbToHsv(
-          hslToRgb({
-            h: clamp(a, 0, 360),
-            l: clamp(c, 0, 100),
-            s: clamp(b, 0, 100),
-          })
-        )
       );
     }
   };
@@ -62,9 +54,7 @@ export const ChannelInputs = ({ format, hsv, commit }: ChannelInputsProps) => {
     next[index] = cleaned === "" ? "" : String(numeric);
     setDraft(next);
 
-    if (next.every((c) => c !== "")) {
-      commitChannels(next);
-    }
+    if (next.every((c) => c !== "")) commitChannels(next);
 
     if (numeric > config.thresholds[index] && index < 2) {
       channelRefs.current[index + 1]?.focus();
@@ -94,11 +84,7 @@ export const ChannelInputs = ({ format, hsv, commit }: ChannelInputsProps) => {
 
     if (numbers.length === 3) {
       e.preventDefault();
-      const clamped = numbers.map((n, i) => clamp(n, 0, config.maxs[i])) as [
-        number,
-        number,
-        number,
-      ];
+      const clamped = numbers.map((n, i) => clamp(n, 0, config.maxs[i]));
       const strings = clamped.map(String) as [string, string, string];
       setDraft(strings);
       commitChannels(strings);

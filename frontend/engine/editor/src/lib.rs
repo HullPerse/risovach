@@ -7,6 +7,7 @@
 //!
 //! The crate knows nothing about the browser or JavaScript.
 
+mod fill;
 mod sample;
 
 #[cfg(test)]
@@ -17,6 +18,7 @@ pub use sample::sample_color;
 use drawing_brush::stroke::StrokeEngine;
 use drawing_brush::{BrushSettings, StrokeSample, Tool};
 use drawing_core::TILE_SIZE;
+use drawing_core::color::Color;
 use drawing_core::document::{Document, Layer, LayerId};
 use drawing_core::geometry::{Point, Rect, Size};
 use drawing_core::tile::{Tile, TileKey, snapshot_tiles, tiles_in_rect};
@@ -24,6 +26,8 @@ use drawing_format::LoadError;
 use drawing_history::{History, HistoryPatch};
 use drawing_raster::BlendMode;
 use serde::Serialize;
+
+use fill::{paint_region, plan_fill};
 
 /// Layer description for the UI. There are no pixels here: the output pulls
 /// them, and only for tiles that really changed.
@@ -242,6 +246,56 @@ impl Editor {
 
     pub fn redo(&mut self) -> bool {
         self.history.redo(&mut self.document).is_some()
+    }
+
+    /// Region fill at a point: the flood runs over what the user sees, the
+    /// paint goes into the active layer with the brush colour and opacity, and
+    /// the whole region commits as one history step. `false` means nothing
+    /// changed: outside the document, an empty brush, or the colour over
+    /// itself.
+    pub fn fill(&mut self, point: Point) -> bool {
+        let color = Color::from_hex(&self.brush.color).unwrap_or(Color::BLACK);
+        let opacity = self.brush.opacity;
+        let (layers, size) = (self.document.layers(), self.document.size());
+
+        let Some(plan) = plan_fill(layers, size, point, opacity) else {
+            return false;
+        };
+
+        if plan.indices.is_empty() {
+            return false;
+        }
+
+        let layer_id = self.document.active_layer_id();
+
+        let outcome = {
+            let Some(layer) = self.document.layer_mut(layer_id) else {
+                return false;
+            };
+
+            let keys = plan.keys.clone();
+            let before = snapshot_tiles(&layer.tiles, &keys);
+            let changed = paint_region(&mut layer.tiles, &plan, color, opacity);
+
+            if changed.is_empty() {
+                None
+            } else {
+                Some((before, snapshot_tiles(&layer.tiles, &keys), keys))
+            }
+        };
+
+        let Some((before, after, keys)) = outcome else {
+            return false;
+        };
+
+        self.history.record(HistoryPatch {
+            after,
+            before,
+            keys,
+            layer_id,
+        });
+
+        true
     }
 
     pub fn clear_layer(&mut self) -> bool {

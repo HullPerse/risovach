@@ -6,7 +6,7 @@
 
 use drawing_core::TILE_SIZE;
 use drawing_core::geometry::{Rect, Size};
-use drawing_core::tile::{TileKey, TileMap, tiles_in_rect};
+use drawing_core::tile::{TileKey, TileMap, tile_rect, tiles_in_rect};
 use drawing_raster::{BlendMode, StampOptions, composite_tile, paint_stamp};
 
 use crate::{BrushSettings, StampStyle, StrokeSample, Tool, stamp_distances};
@@ -151,12 +151,23 @@ impl StrokeEngine {
         );
 
         for key in keys {
+            let tile_box = tile_rect(key, self.buffer.cols(), TILE_SIZE);
+            // Clip to the document: without it stamps bleed past the sheet
+            // into tile overhang that the output draws outside the white.
+            let clip = Rect::new(
+                tile_box.x.max(0.0),
+                tile_box.y.max(0.0),
+                (tile_box.x + tile_box.width).min(size.width) - tile_box.x.max(0.0),
+                (tile_box.y + tile_box.height).min(size.height) - tile_box.y.max(0.0),
+            );
+
             paint_stamp(
                 self.buffer.ensure(key),
                 &StampOptions {
                     alpha: 1.0,
                     center_x: sample.x,
                     center_y: sample.y,
+                    clip,
                     color: style.color,
                     hardness: style.hardness,
                     radius,

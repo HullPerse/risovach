@@ -2,10 +2,7 @@ import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 
 import { createApp } from "@/app.server";
 import { rawDb } from "@/db/index.db";
-import migrate from "@/db/migration.db";
 import { resolveBackendPath } from "@/lib/path.utils";
-
-migrate();
 
 const app = createApp();
 
@@ -58,6 +55,7 @@ describe("Auth", () => {
     const body = await res.json();
     expect(body.user).toBeDefined();
     expect(body.user.username).toBe("TESTUSER");
+    expect(body.user.role).toBe("user");
     expect(body.user.id).toBeTypeOf("number");
     expect(body.user.passwordHash).toBeUndefined();
     expect(cookie).toContain("session=");
@@ -101,6 +99,7 @@ describe("Auth", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.user.username).toBe("TESTUSER");
+    expect(body.user.role).toBe("user");
     expect(res.headers.get("set-cookie")).toContain("session=");
   });
 
@@ -123,6 +122,7 @@ describe("Auth", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.user.username).toBe("MEUSER");
+    expect(body.user.role).toBe("user");
   });
 
   test("me without cookie returns 401", async () => {

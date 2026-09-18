@@ -1,6 +1,9 @@
+export type UserRole = "user" | "admin" | "subscriber";
+
 export interface User {
   id: number;
   username: string;
+  role: UserRole;
   location: {
     city: string | null;
     country: string | null;

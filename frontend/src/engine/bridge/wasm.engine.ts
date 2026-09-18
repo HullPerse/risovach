@@ -48,7 +48,7 @@ export const drawingEnginePixels = (
   length: number
 ): Uint8Array => {
   if (!memory) {
-    throw new Error("Engine not loaded: module doesnt exist yet");
+    throw new Error("Engine not loaded: module does not exist yet");
   }
 
   return new Uint8Array(memory.buffer, address, length);

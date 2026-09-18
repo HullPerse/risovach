@@ -1,21 +1,19 @@
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-import CanvasRegister from "./components/canvas.register";
-import DataRegister from "./components/data.register";
-import PreviewRegister from "./components/preview.register";
+import type { AuthTab, RegisterStep } from "@/types/app/auth";
+
+import CanvasRegister from "./components/canvasRegister.component";
+import DataRegister from "./components/dataRegister.component";
+import PreviewRegister from "./components/previewRegister.component";
 
 export const RegisterAuth = ({
   setTab,
 }: {
-  setTab: (value: "login" | "register") => void;
+  setTab: (value: AuthTab) => void;
 }) => {
-  const [currentTab, setCurrentTab] = useState<"data" | "canvas" | "preview">(
-    "data"
-  );
+  const [currentTab, setCurrentTab] = useState<RegisterStep>("data");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const handleCreate = (file: File | null) => {
@@ -24,10 +22,7 @@ export const RegisterAuth = ({
   };
 
   const getComponent = () => {
-    const tabMap: Record<string, ReactNode> = {
-      canvas: (
-        <CanvasRegister setCurrentTab={setCurrentTab} onCreate={handleCreate} />
-      ),
+    const tabMap: Record<RegisterStep, ReactNode> = {
       data: (
         <DataRegister
           setTab={setTab}
@@ -38,14 +33,15 @@ export const RegisterAuth = ({
           setPassword={setPassword}
         />
       ),
+      canvas: (
+        <CanvasRegister setCurrentTab={setCurrentTab} onCreate={handleCreate} />
+      ),
       preview: (
         <PreviewRegister
           setCurrentTab={setCurrentTab}
           username={username}
           avatarFile={avatarFile}
           password={password}
-          confirmPassword={confirmPassword}
-          setConfirmPassword={setConfirmPassword}
         />
       ),
     };
@@ -54,8 +50,8 @@ export const RegisterAuth = ({
   };
 
   return (
-    <div className="flex w-full flex-col items-center gap-2">
+    <main className="flex w-full flex-col items-center gap-2">
       {getComponent()}
-    </div>
+    </main>
   );
 };

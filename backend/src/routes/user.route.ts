@@ -1,5 +1,9 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 
+import {
+  avatarParamsSchema,
+  avatarQuerySchema,
+} from "@/lib/schemas/user.schema";
 import { databasePlugin, servicesPlugin } from "@/plugins/index.plugin";
 
 const userRoute = new Elysia({ prefix: "/users" })
@@ -45,10 +49,8 @@ const userRoute = new Elysia({ prefix: "/users" })
       });
     },
     {
-      params: t.Object({ id: t.String() }),
-      query: t.Object({
-        size: t.Optional(t.Union([t.Literal("thumb"), t.Literal("full")])),
-      }),
+      params: avatarParamsSchema,
+      query: avatarQuerySchema,
     }
   );
 

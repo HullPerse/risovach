@@ -10,7 +10,7 @@ import type {
   TileDrawItem,
   TileRef,
   TileRefSource,
-} from "@/types/drawing";
+} from "@/types/engine/drawing";
 
 export const visibleDocumentRect = (
   camera: Camera,
@@ -81,9 +81,7 @@ export const renderFrame = ({
   const groups: LayerFrame[] = [];
 
   for (const layer of source.layers) {
-    if (!layer.visible) {
-      continue;
-    }
+    if (!layer.visible) continue;
 
     groups.push({
       items: makeItems(
@@ -121,7 +119,9 @@ export const renderFrame = ({
   return { camera, document, groups, overlay: overlayFrame, viewport };
 };
 
-export const indexFrame = (frame: RenderFrame): Map<string, FrameIndexEntry> => {
+export const indexFrame = (
+  frame: RenderFrame
+): Map<string, FrameIndexEntry> => {
   const index = new Map<string, FrameIndexEntry>();
 
   const add = (prefix: string, items: TileDrawItem[]) => {
@@ -135,13 +135,9 @@ export const indexFrame = (frame: RenderFrame): Map<string, FrameIndexEntry> => 
     }
   };
 
-  for (const group of frame.groups) {
-    add(String(group.layerId), group.items);
-  }
+  for (const group of frame.groups) add(String(group.layerId), group.items);
 
-  if (frame.overlay) {
-    add("overlay", frame.overlay.items);
-  }
+  if (frame.overlay) add("overlay", frame.overlay.items);
 
   return index;
 };
@@ -158,9 +154,7 @@ const unionRect = (
     y: item.y - padding,
   };
 
-  if (!bounds) {
-    return box;
-  }
+  if (!bounds) return box;
 
   const right = Math.max(bounds.x + bounds.width, box.x + box.width);
   const bottom = Math.max(bounds.y + bounds.height, box.y + box.height);
@@ -204,19 +198,13 @@ export const diffFrames = (
     }
   }
 
-  if (!bounds) {
-    return null;
-  }
+  if (!bounds) return null;
 
   const x = Math.max(0, Math.floor(bounds.x));
   const y = Math.max(0, Math.floor(bounds.y));
   const right = Math.min(viewport.width, Math.ceil(bounds.x + bounds.width));
   const bottom = Math.min(viewport.height, Math.ceil(bounds.y + bounds.height));
 
-  if (right <= x || bottom <= y) {
-    return null;
-  }
-
+  if (right <= x || bottom <= y) return null;
   return { height: bottom - y, width: right - x, x, y };
 };
-

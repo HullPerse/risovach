@@ -66,3 +66,23 @@ fn tile_bytes_matches_the_tile_side() {
     assert_eq!(tile_bytes(), side * side * 4);
     assert_eq!(tile_bytes(), TILE_BYTES);
 }
+
+#[test]
+fn fill_pours_the_region_and_undoes_in_one_step() {
+    let mut engine = engine();
+
+    assert!(engine.fill(10.0, 10.0));
+    assert!(engine.has_content());
+    assert_eq!(engine.sample_color(10.0, 10.0), 0x000000);
+
+    // A fill over the same colour is not a change, like a stroke over it.
+    assert!(!engine.fill(400.0, 400.0));
+    assert!(engine.can_undo());
+
+    assert!(engine.undo());
+
+    // The undo returns the empty sheet: white, the sampler background.
+    assert_eq!(engine.sample_color(10.0, 10.0), 0xffffff);
+    assert!(!engine.has_content());
+    assert!(!engine.can_undo());
+}

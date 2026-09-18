@@ -24,6 +24,9 @@ const TestPage = lazy(() => import("./test.route"));
 
 const rootRoute = createRootRoute({
   component: App,
+  errorComponent: ({ error, reset }) => (
+    <BigError error={error} onRetry={reset} />
+  ),
 });
 
 const indexRoute = createRoute({

@@ -1,6 +1,6 @@
 import { WS_URL } from "@/config/api.config";
-import { wsMessageSchema } from "@/lib/zod.utils";
-import type { WsMessage } from "@/lib/zod.utils";
+import { wsMessageSchema } from "@/lib/schemas/ws.schema";
+import type { WsMessage } from "@/types/shared/ws";
 
 type Listener = (message: WsMessage) => void;
 

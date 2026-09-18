@@ -16,7 +16,7 @@ import type {
   TileRef,
   TileRefSource,
   TileSourceKind,
-} from "@/types/drawing";
+} from "@/types/engine/drawing";
 
 const SIZE: Size = { height: 512, width: 512 };
 const CAMERA: Camera = { x: 0, y: 0, zoom: 1 };

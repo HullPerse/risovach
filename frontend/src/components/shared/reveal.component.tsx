@@ -1,7 +1,7 @@
 import { useState } from "react";
 
+import { ApiError } from "@/api/request.api";
 import { Button } from "@/components/ui/button.component";
-import { ApiError } from "@/config/api.config";
 
 const getErrorSummary = (error: Error): string => {
   const statusMap: Record<number, string> = {

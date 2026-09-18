@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { MenuStore } from "@/types/store";
+import type { MenuStore } from "@/types/app/store";
 
 export const useMenuStore = create<MenuStore>((set) => ({
   activeView: "main",

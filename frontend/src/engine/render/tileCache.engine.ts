@@ -1,4 +1,5 @@
-import type { TileReader, TileRef } from "@/types/drawing";
+import type { CacheEntry } from "@/types/engine/canvas";
+import type { TileReader, TileRef } from "@/types/engine/drawing";
 
 const identity = (ref: TileRef): string =>
   `${ref.source}:${ref.layerId}:${ref.key}`;
@@ -14,9 +15,7 @@ const createEntry = (tileSize: number): CacheEntry => {
 
   const context = canvas.getContext("2d");
 
-  if (!context) {
-    throw new Error("Не удалось получить контекст тайла");
-  }
+  if (!context) throw new Error("Failed to get tile context");
 
   const pixels = new Uint8Array(bytesPerTile(tileSize));
 
@@ -36,14 +35,6 @@ const createEntry = (tileSize: number): CacheEntry => {
     version: -1,
   };
 };
-
-interface CacheEntry {
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D;
-  image: ImageData;
-  pixels: Uint8Array;
-  version: number;
-}
 
 /**
  * Tile canvas cache keyed by version: while the version holds, pixels are
@@ -66,9 +57,7 @@ export class TileCanvasCache {
     const id = identity(ref);
     const existing = this.entries.get(id);
 
-    if (existing && existing.version === ref.version) {
-      return existing.canvas;
-    }
+    if (existing && existing.version === ref.version) return existing.canvas;
 
     const entry = existing ?? createEntry(this.tileSize);
 

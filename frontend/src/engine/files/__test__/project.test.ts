@@ -4,8 +4,8 @@ import { existsSync } from "node:fs";
 import { loadDrawingEngine } from "@/engine/bridge/wasm.engine";
 import { WasmDrawingCore } from "@/engine/bridge/wasmCore.engine";
 import { exportProject, readProjectFile } from "@/engine/files/project.engine";
-import type { BrushSettings, StrokeSample } from "@/types/brush";
-import type { DrawingCore, Size } from "@/types/drawing";
+import type { BrushSettings, StrokeSample } from "@/types/engine/brush";
+import type { DrawingCore, Size } from "@/types/engine/drawing";
 
 /**
  * Whole project file path: draw, save, reopen, compare pixels. Rust tests

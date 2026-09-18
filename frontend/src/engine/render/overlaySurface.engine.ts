@@ -4,24 +4,17 @@ import {
   MAG_SIZE,
   MAG_SOURCE,
   MIN_CURSOR_RADIUS,
+  PADDING,
 } from "@/config/drawing.config";
 import { documentRect, documentToScreen } from "@/lib/camera.utils";
-import type { BrushSettings } from "@/types/brush";
-import type { CanvasTool, Point } from "@/types/canvas";
-import type { Camera, Rect, Size } from "@/types/drawing";
-
-const PADDING = 2;
-
-export interface OverlayOptions {
-  brush: BrushSettings;
-  camera: Camera;
-  document: Size;
-  hex: string | null;
-  pointer: Point | null;
-  source: HTMLCanvasElement | null;
-  tool: CanvasTool;
-  viewport: Size;
-}
+import { deviceRect, frameEdges } from "@/lib/pixelGrid.utils";
+import type { Point } from "@/types/engine/canvas";
+import type {
+  Camera,
+  OverlayOptions,
+  Rect,
+  Size,
+} from "@/types/engine/drawing";
 
 export const cursorRing = (
   camera: Camera,
@@ -30,14 +23,13 @@ export const cursorRing = (
   brushSize: number,
   point: Point
 ): { radius: number; x: number; y: number } | null => {
-  if (
+  const emptyCheck =
     point.x < 0 ||
     point.y < 0 ||
     point.x > document.width ||
-    point.y > document.height
-  ) {
-    return null;
-  }
+    point.y > document.height;
+
+  if (emptyCheck) return null;
 
   const screen = documentToScreen(camera, viewport, document, point);
 
@@ -88,13 +80,8 @@ const boxRect = (position: Point, size: number, padding: number): Rect => ({
 });
 
 const union = (from: Rect | null, to: Rect | null): Rect | null => {
-  if (!from) {
-    return to;
-  }
-
-  if (!to) {
-    return from;
-  }
+  if (!from) return to;
+  if (!to) return from;
 
   const x = Math.min(from.x, to.x);
   const y = Math.min(from.y, to.y);
@@ -105,21 +92,24 @@ const union = (from: Rect | null, to: Rect | null): Rect | null => {
 };
 
 /**
- * The overlay holds the cursor ring, the eyedropper magnifier and the size
- * hint. It clears the union of the last and the current frame, not the canvas.
+ * The overlay holds the sheet frame, the cursor ring and the eyedropper
+ * magnifier. The frame belongs here and not on the tile canvas: that canvas
+ * is the magnifier source, and a border drawn into it showed up at the very
+ * edge of the magnified picture. The plan keeps the frame area apart from the
+ * pointer area, so the ring and the magnifier never repaint it, and the
+ * magnifier crop of the tile canvas stays frame-free.
  */
 export class OverlaySurface {
   private readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D;
   private dpr = 1;
+  private frameRect: Rect | null = null;
   private previous: Rect | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const context = canvas.getContext("2d");
 
-    if (!context) {
-      throw new Error("Не удалось получить контекст оверлея");
-    }
+    if (!context) throw new Error("Failed to get overlay context");
 
     this.canvas = canvas;
     this.context = context;
@@ -133,22 +123,89 @@ export class OverlaySurface {
     this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.dpr = dpr;
     this.previous = null;
+    this.frameRect = null;
   }
 
   render(options: OverlayOptions): void {
-    const { camera, document: size, pointer, tool, viewport } = options;
+    const { pointer } = options;
+
+    this.renderFrame(options);
+
+    if (pointer === null) return this.clearPrevious();
+
+    this.renderPointer(options, pointer);
+  }
+
+  /**
+   * The frame is the only overlay content that outlives a cleared plan: the
+   * pointer plan clears only its own previous box, and the frame plan clears
+   * only its own old rectangle. A camera change repaints the frame area;
+   * a pointer change never touches it, so the ring and the magnifier cannot
+   * smear it or crop it into the magnifier picture.
+   */
+  private renderFrame(options: OverlayOptions): void {
+    const { camera, document: size, viewport } = options;
+    const sheet = deviceRect(documentRect(camera, viewport, size), this.dpr);
+    const previous = this.frameRect;
+
+    this.frameRect = sheet;
+
+    if (
+      previous &&
+      previous.x === sheet.x &&
+      previous.y === sheet.y &&
+      previous.width === sheet.width &&
+      previous.height === sheet.height
+    ) {
+      return;
+    }
+
+    const { context } = this;
+    const dirty = union(previous, sheet);
+
+    if (!dirty) return;
+
+    context.clearRect(dirty.x, dirty.y, dirty.width, dirty.height);
+
+    const frame = frameEdges(sheet, this.dpr);
+
+    context.strokeStyle = "rgba(0, 0, 0, 0.45)";
+    context.lineWidth = 1 / this.dpr;
+    context.beginPath();
+    context.moveTo(frame.left, frame.top);
+    context.lineTo(frame.right, frame.top);
+    context.lineTo(frame.right, frame.bottom);
+    context.lineTo(frame.left, frame.bottom);
+    context.closePath();
+    context.stroke();
+  }
+
+  private clearPrevious(): void {
+    const { previous } = this;
+
+    this.previous = null;
+
+    if (previous) {
+      this.context.clearRect(
+        previous.x,
+        previous.y,
+        previous.width,
+        previous.height
+      );
+    }
+  }
+
+  private renderPointer(options: OverlayOptions, pointer: Point): void {
+    const { camera, document: size, tool, viewport } = options;
+    // the fill has no ring: the region is not a circle, so a ring would lie
+    // about what the click is going to pour into
     const ring =
-      pointer === null
+      tool === "fill"
         ? null
         : cursorRing(camera, size, viewport, options.brush.size, pointer);
-    const anchor =
-      pointer === null
-        ? null
-        : documentToScreen(camera, viewport, size, pointer);
+    const anchor = documentToScreen(camera, viewport, size, pointer);
     const magnifier =
-      anchor !== null && tool === "eyedropper"
-        ? magnifierPosition(anchor, viewport)
-        : null;
+      tool === "eyedropper" ? magnifierPosition(anchor, viewport) : null;
     const current = union(
       ring ? boxAround(ring, ring.radius, PADDING) : null,
       magnifier ? boxRect(magnifier, MAG_SIZE, PADDING + 4) : null
@@ -157,19 +214,53 @@ export class OverlaySurface {
 
     this.previous = current;
 
-    if (!dirty) {
-      return;
-    }
+    if (!dirty) return;
 
     this.context.clearRect(dirty.x, dirty.y, dirty.width, dirty.height);
 
-    if (ring) {
-      this.drawRing(ring, options);
+    // The clear above wipes any frame line inside the pointer box; the frame
+    // plan is independent, so the line comes back only when the camera moves.
+    // Redrawing it here keeps the border whole while the pointer moves over it.
+    this.redrawFrameInside(dirty);
+
+    if (ring) this.drawRing(ring, options);
+
+    if (magnifier) this.drawMagnifier(magnifier, options);
+  }
+
+  /** Restores the frame line inside a cleared pointer area. */
+  private redrawFrameInside(dirty: Rect): void {
+    const sheet = this.frameRect;
+
+    if (!sheet) return;
+
+    const frame = frameEdges(sheet, this.dpr);
+
+    if (
+      frame.right < dirty.x ||
+      frame.left > dirty.x + dirty.width ||
+      frame.bottom < dirty.y ||
+      frame.top > dirty.y + dirty.height
+    ) {
+      return;
     }
 
-    if (magnifier) {
-      this.drawMagnifier(magnifier, options);
-    }
+    const { context } = this;
+
+    context.save();
+    context.beginPath();
+    context.rect(dirty.x, dirty.y, dirty.width, dirty.height);
+    context.clip();
+    context.strokeStyle = "rgba(0, 0, 0, 0.45)";
+    context.lineWidth = 1 / this.dpr;
+    context.beginPath();
+    context.moveTo(frame.left, frame.top);
+    context.lineTo(frame.right, frame.top);
+    context.lineTo(frame.right, frame.bottom);
+    context.lineTo(frame.left, frame.bottom);
+    context.closePath();
+    context.stroke();
+    context.restore();
   }
 
   private drawRing(
@@ -185,8 +276,6 @@ export class OverlaySurface {
 
     context.save();
 
-    // the ring belongs to the sheet: outside it there is nothing to draw, and
-    // otherwise it hangs over the background, detached from the document
     context.beginPath();
     context.rect(bounds.x, bounds.y, bounds.width, bounds.height);
     context.clip();

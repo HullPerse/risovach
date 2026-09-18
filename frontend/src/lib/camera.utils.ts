@@ -1,17 +1,18 @@
-import type { Point } from "@/types/canvas";
-import type { Camera, Rect, Size, ZoomLimits } from "@/types/drawing";
+import type { Point } from "@/types/engine/canvas";
+import type { Camera, Rect, Size, ZoomLimits } from "@/types/engine/drawing";
 
-const clamp = (value: number, min: number, max: number) => {
+const clamp = (value: number, min: number, max: number): number => {
   const clamped = Math.min(max, Math.max(min, value));
 
-  // negative zero in the camera offset is useless and breaks comparisons
-  return clamped === 0 ? 0 : clamped;
+  // if -0 it returns 0, otherwise clamped
+  return clamped + 0;
 };
 
 export const createCamera = (zoom: number): Camera => ({ x: 0, y: 0, zoom });
 
-export const clampZoom = (zoom: number, limits: ZoomLimits): number =>
-  clamp(zoom, limits.min, limits.max);
+export const clampZoom = (zoom: number, limits: ZoomLimits): number => {
+  return clamp(zoom, limits.min, limits.max);
+};
 
 export const documentToScreen = (
   camera: Camera,
@@ -19,7 +20,10 @@ export const documentToScreen = (
   document: Size,
   point: Point
 ): Point => ({
-  x: (point.x - document.width / 2) * camera.zoom + viewport.width / 2 + camera.x,
+  x:
+    (point.x - document.width / 2) * camera.zoom +
+    viewport.width / 2 +
+    camera.x,
   y:
     (point.y - document.height / 2) * camera.zoom +
     viewport.height / 2 +
@@ -32,7 +36,9 @@ export const screenToDocument = (
   document: Size,
   point: Point
 ): Point => ({
-  x: (point.x - viewport.width / 2 - camera.x) / camera.zoom + document.width / 2,
+  x:
+    (point.x - viewport.width / 2 - camera.x) / camera.zoom +
+    document.width / 2,
   y:
     (point.y - viewport.height / 2 - camera.y) / camera.zoom +
     document.height / 2,
@@ -69,9 +75,7 @@ export const clampCamera = (
   document: Size,
   limitToBounds: boolean
 ): Camera => {
-  if (!limitToBounds) {
-    return camera;
-  }
+  if (!limitToBounds) return camera;
 
   // The document always stays on screen: when it fits whole, panning is
   // limited to the free space; when it is larger, its edges are reachable.
@@ -95,9 +99,7 @@ export const zoomCameraAt = (
 ): Camera => {
   const zoom = clampZoom(camera.zoom * factor, limits);
 
-  if (zoom === camera.zoom) {
-    return camera;
-  }
+  if (zoom === camera.zoom) return camera;
 
   const anchor = screenToDocument(camera, viewport, document, screenPoint);
 

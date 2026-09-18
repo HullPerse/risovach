@@ -7,7 +7,7 @@ import {
   tile_bytes as wasmTileBytes,
   tile_size as wasmTileSize,
 } from "@/wasm/drawing/drawing_engine";
-import type { StrokeSample } from "@/types/brush";
+import type { StrokeSample } from "@/types/engine/brush";
 
 /**
  * Tile pixels reach the output by address in module memory, not through a

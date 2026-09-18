@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button.component";
-import type { GeoState } from "@/hooks/geo.hook";
+import type { GeoState } from "@/types/shared/geo";
 import { cn } from "@/lib/index.utils";
 
 import { Checkbox } from "../ui/checkbox.component";

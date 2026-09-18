@@ -1,4 +1,4 @@
-import type { MenuButton } from "@/types/menu";
+import type { MenuButton } from "@/types/app/menu";
 
 export const MenuButtons: MenuButton[] = [
   {

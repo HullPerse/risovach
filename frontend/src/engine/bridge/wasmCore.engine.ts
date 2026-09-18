@@ -1,10 +1,14 @@
-import { z } from "zod";
-
-import { DEFAULT_BRUSH } from "@/config/drawing.config";
+import {
+  DEFAULT_BRUSH,
+  MAX_COLOR,
+  MODE_DESTINATION_OUT,
+  NO_OVERLAY,
+  SAMPLE_STRIDE,
+} from "@/config/drawing.config";
 import { rgbToHex } from "@/lib/color.utils";
-import type { DrawingEngine } from "@/wasm/drawing/drawing_engine";
-import type { BrushSettings, StrokeSample } from "@/types/brush";
-import type { CanvasTool, Point } from "@/types/canvas";
+import { LAYERS_SCHEMA } from "@/lib/schemas/layers.schema";
+import type { BrushSettings, StrokeSample } from "@/types/engine/brush";
+import type { CanvasTool, Point } from "@/types/engine/canvas";
 import type {
   DrawingCore,
   LayerInfo,
@@ -13,37 +17,14 @@ import type {
   Size,
   TileRef,
   TileSourceKind,
-} from "@/types/drawing";
+} from "@/types/engine/drawing";
+import type { DrawingEngine } from "@/wasm/drawing/drawing_engine";
 
 import {
   drawingEnginePixels,
   drawingEngineTileSize,
   loadDrawingEngine,
 } from "./wasm.engine";
-
-/** Six numbers per sample: x, y, pressure, tilt x, tilt y, time. */
-const SAMPLE_STRIDE = 6;
-
-const MODE_DESTINATION_OUT = 1;
-
-/** Zero means "no stroke": layer ids start at one. */
-const NO_OVERLAY = 0;
-
-/** Outside the document the core returns a value above any 0xRRGGBB. */
-const MAX_COLOR = 0xff_ff_ff;
-
-/**
- * The binding hands layers back untyped, so they are parsed here. This is
- * the only untyped edge: everything beyond it is `LayerInfo`.
- */
-const LAYERS_SCHEMA = z.array(
-  z.object({
-    id: z.number(),
-    name: z.string(),
-    opacity: z.number(),
-    visible: z.boolean(),
-  })
-);
 
 /** Turns flat "key, version" pairs into tile references. */
 const toRefs = (
@@ -82,15 +63,21 @@ export class WasmDrawingCore implements DrawingCore {
     this.engine = engine;
   }
 
-  static async create(documentSize: Size): Promise<WasmDrawingCore> {
-    const Engine = await loadDrawingEngine();
-    const core = new WasmDrawingCore(
-      new Engine(documentSize.width, documentSize.height)
-    );
+  /** Wraps a raw engine with the default brush, ready to draw. */
+  private static boot(engine: DrawingEngine): WasmDrawingCore {
+    const core = new WasmDrawingCore(engine);
 
     core.setBrush(DEFAULT_BRUSH);
 
     return core;
+  }
+
+  static async create(documentSize: Size): Promise<WasmDrawingCore> {
+    const Engine = await loadDrawingEngine();
+
+    return WasmDrawingCore.boot(
+      new Engine(documentSize.width, documentSize.height)
+    );
   }
 
   /**
@@ -107,16 +94,12 @@ export class WasmDrawingCore implements DrawingCore {
     } catch (error: unknown) {
       // The binding throws a string, not an error: that is the wasm edge.
       throw new Error(
-        typeof error === "string" ? error : "файл проекта не читается",
+        typeof error === "string" ? error : "project file is unreadable",
         { cause: error }
       );
     }
 
-    const core = new WasmDrawingCore(engine);
-
-    core.setBrush(DEFAULT_BRUSH);
-
-    return core;
+    return WasmDrawingCore.boot(engine);
   }
 
   /** Whole project file. Bytes leave module memory as one copy. */
@@ -173,9 +156,7 @@ export class WasmDrawingCore implements DrawingCore {
   get overlay(): OverlayInfo | null {
     const layerId = this.engine.overlay_layer_id();
 
-    if (layerId === NO_OVERLAY) {
-      return null;
-    }
+    if (layerId === NO_OVERLAY) return null;
 
     return {
       layerId,
@@ -188,9 +169,7 @@ export class WasmDrawingCore implements DrawingCore {
   }
 
   setBrush(brush: BrushSettings): boolean {
-    if (this.strokeActive) {
-      return false;
-    }
+    if (this.strokeActive) return false;
 
     const changed = this.engine.set_brush(
       brush.color,
@@ -200,17 +179,13 @@ export class WasmDrawingCore implements DrawingCore {
       brush.spacing
     );
 
-    if (changed) {
-      this.brushState = brush;
-    }
+    if (changed) this.brushState = brush;
 
     return changed;
   }
 
   setTool(tool: CanvasTool): boolean {
-    if (this.strokeActive || tool === this.toolState) {
-      return false;
-    }
+    if (this.strokeActive || tool === this.toolState) return false;
 
     this.engine.set_eraser(tool === "eraser");
     this.toolState = tool;
@@ -230,9 +205,7 @@ export class WasmDrawingCore implements DrawingCore {
   }
 
   pushSamples(samples: StrokeSample[]): void {
-    if (!this.strokeActive || samples.length === 0) {
-      return;
-    }
+    if (!this.strokeActive || samples.length === 0) return;
 
     const needed = samples.length * SAMPLE_STRIDE;
 
@@ -271,12 +244,14 @@ export class WasmDrawingCore implements DrawingCore {
     return this.engine.clear_layer();
   }
 
+  fill(point: Point): boolean {
+    return this.engine.fill(point.x, point.y);
+  }
+
   sampleColor(point: Point): string | null {
     const packed = this.engine.sample_color(point.x, point.y);
 
-    if (packed > MAX_COLOR) {
-      return null;
-    }
+    if (packed > MAX_COLOR) return null;
 
     // Digits are extracted by division: the project bans bitwise ops, and
     // byte order through a typed array would depend on the platform.
@@ -328,9 +303,7 @@ export class WasmDrawingCore implements DrawingCore {
         ? this.engine.overlay_tile_pointer(ref.key)
         : this.engine.tile_pointer(ref.layerId, ref.key);
 
-    if (address === 0) {
-      return false;
-    }
+    if (address === 0) return false;
 
     target.set(drawingEnginePixels(address, target.length));
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { DrawingBridge } from "@/engine/bridge/bridge.engine";
-import type { BrushSettings, StrokeSample } from "@/types/brush";
-import type { CanvasTool } from "@/types/canvas";
+import type { BrushSettings, StrokeSample } from "@/types/engine/brush";
+import type { CanvasTool } from "@/types/engine/canvas";
 import type {
   BlendMode,
   DrawingCore,
@@ -10,7 +10,7 @@ import type {
   OverlayInfo,
   Size,
   TileRef,
-} from "@/types/drawing";
+} from "@/types/engine/drawing";
 
 const SIZE: Size = { height: 512, width: 512 };
 
@@ -42,6 +42,7 @@ class FakeCore implements DrawingCore {
   canRedo = false;
   canUndo = false;
   calls: string[] = [];
+  fillChanges = true;
   hasContent = false;
   layerRefs: TileRef[] = [{ key: 0, layerId: 1, source: "layer", version: 0 }];
   layers: LayerInfo[] = [{ id: 1, name: "Layer 1", opacity: 1, visible: true }];
@@ -80,6 +81,14 @@ class FakeCore implements DrawingCore {
     this.canUndo = true;
 
     return true;
+  }
+
+  fill(): boolean {
+    this.calls.push("fill");
+    this.hasContent = true;
+    this.canUndo = true;
+
+    return this.fillChanges;
   }
 
   layerTiles(): TileRef[] {
@@ -289,6 +298,24 @@ describe("drawing bridge", () => {
       "redo",
       "clearLayer",
     ]);
+  });
+
+  test("a fill reaches the core once and notifies only on a change", () => {
+    const { bridge, core, seen } = setup();
+
+    core.fillChanges = false;
+
+    // the method is the command, not Array.fill: the linter reads it wrong
+    // oxlint-disable-next-line unicorn/no-array-fill-with-reference-type
+    expect(bridge.fill({ x: 10, y: 10 })).toBe(false);
+    expect(core.calls).toEqual(["fill"]);
+    expect(seen()).toBe(0);
+
+    core.fillChanges = true;
+
+    // oxlint-disable-next-line unicorn/no-array-fill-with-reference-type
+    expect(bridge.fill({ x: 20, y: 20 })).toBe(true);
+    expect(seen()).toBe(1);
   });
 
   test("a stroke that never happened is not a change", () => {

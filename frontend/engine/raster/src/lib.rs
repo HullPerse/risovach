@@ -7,6 +7,7 @@
 
 use drawing_core::TILE_SIZE;
 use drawing_core::color::Color;
+use drawing_core::geometry::Rect;
 use drawing_core::tile::Tile;
 
 #[cfg(test)]
@@ -50,7 +51,10 @@ pub fn stamp_coverage(distance: f64, radius: f64, hardness: f64) -> f64 {
     clamp01((radius + 0.5 - distance) / band)
 }
 
-fn blend_source_over(pixels: &mut [u8], index: usize, color: Color, source_alpha: f64) {
+/// Source-over blend of one pixel. Public for writers outside the brush: the
+/// region fill puts pixels in with the same blend the stamps use, or the
+/// picture would depend on which tool drew it.
+pub fn blend_source_over(pixels: &mut [u8], index: usize, color: Color, source_alpha: f64) {
     let src = clamp01(source_alpha);
 
     if src <= 0.0 {
@@ -91,6 +95,9 @@ pub struct StampOptions {
     pub alpha: f64,
     pub center_x: f64,
     pub center_y: f64,
+    /// Pixels outside stay untouched: edge tiles overhang the document,
+    /// and without this the stroke would spill past the sheet.
+    pub clip: Rect,
     pub color: Color,
     pub hardness: f64,
     pub radius: f64,
@@ -103,6 +110,7 @@ pub fn paint_stamp(tile: &mut Tile, options: &StampOptions) -> bool {
         alpha,
         center_x,
         center_y,
+        clip,
         color,
         hardness,
         radius,
@@ -117,10 +125,30 @@ pub fn paint_stamp(tile: &mut Tile, options: &StampOptions) -> bool {
     let reach = radius + 0.5;
     let last = (TILE_SIZE - 1) as f64;
 
-    let from_x = (center_x - reach - origin_x - 0.5).ceil().max(0.0) as i64;
-    let to_x = (center_x + reach - origin_x - 0.5).floor().min(last) as i64;
-    let from_y = (center_y - reach - origin_y - 0.5).ceil().max(0.0) as i64;
-    let to_y = (center_y + reach - origin_y - 0.5).floor().min(last) as i64;
+    // A pixel belongs to the clip when its unit square overlaps it. The
+    // clip bounds stay exact: they are tile multiples and whole document
+    // sizes, so floor and ceil below lose nothing to float dust.
+    let clip_lo_x = (clip.x - origin_x - 1.0).floor() + 1.0;
+    let clip_hi_x = (clip.x + clip.width - origin_x).ceil() - 1.0;
+    let clip_lo_y = (clip.y - origin_y - 1.0).floor() + 1.0;
+    let clip_hi_y = (clip.y + clip.height - origin_y).ceil() - 1.0;
+
+    let from_x = (center_x - reach - origin_x - 0.5)
+        .ceil()
+        .max(0.0)
+        .max(clip_lo_x) as i64;
+    let to_x = (center_x + reach - origin_x - 0.5)
+        .floor()
+        .min(last)
+        .min(clip_hi_x) as i64;
+    let from_y = (center_y - reach - origin_y - 0.5)
+        .ceil()
+        .max(0.0)
+        .max(clip_lo_y) as i64;
+    let to_y = (center_y + reach - origin_y - 0.5)
+        .floor()
+        .min(last)
+        .min(clip_hi_y) as i64;
 
     let mut painted = false;
 

@@ -1,4 +1,4 @@
-import { PublicUser, UserRow } from "@/types/user";
+import type { PublicUser, UserRow } from "@/types/user";
 
 export const nowIso = (): string => new Date().toISOString();
 
@@ -16,6 +16,7 @@ export const publicUser = (row: UserRow): PublicUser => ({
     city: row.location?.city ?? null,
     country: row.location?.country ?? null,
   },
+  role: row.role,
   username: row.username,
 });
 

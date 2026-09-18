@@ -1,5 +1,7 @@
 import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
 
+import type { UserRole } from "@/types/user";
+
 const timestamps = {
   created: text("created").notNull(),
   updated: text("updated").notNull(),
@@ -14,6 +16,7 @@ export const users = sqliteTable("users", {
     city: string | null;
   } | null>(),
   passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("user").$type<UserRole>(),
   username: text("username").notNull().unique(),
   ...timestamps,
 });
